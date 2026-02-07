@@ -3,7 +3,7 @@ import path from "path";
 
 const SHADER_DIR = "./assets/shader";
 const OUT_DIR = "./src";
-const OUT_FILE = path.join(OUT_DIR, "shaders.ts");
+const OUT_FILE = path.join(OUT_DIR, "shaderSrc.ts");
 
 async function buildShaders() {
     const entries: string[] = [];
