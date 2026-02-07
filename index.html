@@ -1,0 +1,17 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Game WebGl</title>
+</head>
+<body style="margin: 0; padding: 0;">
+
+<canvas id="canvas"></canvas>
+<script src="./dist/index.js" type="module"></script>
+<script>
+    const ws = new WebSocket("ws://localhost:35729");
+    ws.onmessage = () => location.reload();
+</script>
+
+</body>
+</html>
