@@ -13,7 +13,7 @@ export function allocVec2(a : number = 0, b : number = 0): Vec2 {
     return out;
 }
 
-export function set(out: Vec2, a: number, b: number): void {
+export function setVec2(out: Vec2, a: number, b: number): void {
     out[0] = a;
     out[1] = b;
 }

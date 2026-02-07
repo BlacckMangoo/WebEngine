@@ -8,7 +8,7 @@ export function allocVec2(a = 0, b = 0) {
     out[1] = b;
     return out;
 }
-export function set(out, a, b) {
+export function setVec2(out, a, b) {
     out[0] = a;
     out[1] = b;
 }

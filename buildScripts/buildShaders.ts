@@ -2,7 +2,7 @@ import { opendir, readFile, writeFile, mkdir } from "fs/promises";
 import path from "path";
 
 const SHADER_DIR = "./assets/shader";
-const OUT_DIR = "./src";
+const OUT_DIR = "./src/graphics";
 const OUT_FILE = path.join(OUT_DIR, "shaderSrc.ts");
 
 async function buildShaders() {

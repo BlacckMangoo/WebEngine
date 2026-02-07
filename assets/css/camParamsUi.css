@@ -1,0 +1,105 @@
+#cam-controls {
+    position: absolute;
+    top: 10px;
+    left: 10px;
+    background: rgba(0, 0, 0, 0.8);
+    color: #fff;
+    padding: 15px;
+    border-radius: 8px;
+    font-family: 'Segoe UI', Tahoma, sans-serif;
+    font-size: 13px;
+    min-width: 280px;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+    z-index: 1000;
+}
+
+#cam-controls h3 {
+    margin: 0 0 12px 0;
+    padding-bottom: 8px;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.2);
+    font-size: 14px;
+    font-weight: 600;
+    color: #4fc3f7;
+}
+
+#cam-controls .section-title {
+    margin: 12px 0 8px 0;
+    font-size: 12px;
+    font-weight: 600;
+    color: #81d4fa;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+
+#cam-controls .control-row {
+    display: flex;
+    align-items: center;
+    margin-bottom: 8px;
+}
+
+#cam-controls .control-row label {
+    width: 70px;
+    flex-shrink: 0;
+    color: #b0bec5;
+}
+
+#cam-controls .control-row input[type="range"] {
+    flex: 1;
+    height: 4px;
+    margin: 0 10px;
+    -webkit-appearance: none;
+    appearance: none;
+    background: #455a64;
+    border-radius: 2px;
+    outline: none;
+}
+
+#cam-controls .control-row input[type="range"]::-webkit-slider-thumb {
+    -webkit-appearance: none;
+    appearance: none;
+    width: 14px;
+    height: 14px;
+    background: #4fc3f7;
+    border-radius: 50%;
+    cursor: pointer;
+    transition: background 0.2s;
+}
+
+#cam-controls .control-row input[type="range"]::-webkit-slider-thumb:hover {
+    background: #81d4fa;
+}
+
+#cam-controls .control-row input[type="range"]::-moz-range-thumb {
+    width: 14px;
+    height: 14px;
+    background: #4fc3f7;
+    border-radius: 50%;
+    cursor: pointer;
+    border: none;
+}
+
+#cam-controls .control-row .value {
+    width: 50px;
+    text-align: right;
+    font-family: 'Consolas', monospace;
+    color: #fff;
+    font-size: 12px;
+}
+
+#cam-controls .matrix-debug {
+    margin-top: 12px;
+    padding-top: 8px;
+    border-top: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+#cam-controls .matrix-debug pre {
+    margin: 4px 0;
+    padding: 8px;
+    background: rgba(0, 0, 0, 0.3);
+    border-radius: 4px;
+    font-size: 10px;
+    font-family: 'Consolas', monospace;
+    overflow-x: auto;
+    color: #b0bec5;
+}
+
