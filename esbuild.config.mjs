@@ -8,7 +8,7 @@ await Promise.all([
         bundle: true,
         format: "esm",
         platform: "browser",
-        target: "es2020",
+        target: "esnext",
         sourcemap: true,
         logLevel: "info"
     }),
@@ -20,7 +20,7 @@ await Promise.all([
         bundle: true,
         format: "esm",
         platform: "node",
-        target: "es2020",
+        target: "esnext",
         sourcemap: true,
         logLevel: "info"
     })

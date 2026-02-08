@@ -1,19 +1,11 @@
-import Camera from "@/src/graphics/camera";
-import { lookAt, perspective, multiply } from "@/math/mat4"
-import { setVec3 } from "@/math/vec3";
-
-type Mat4 = Float32Array & { length: 16 };
+import Camera from "src/graphics/camera";
+import { setVec3 } from "math/vec3";
 
 interface CamParamsUI {
-    update: () => void;
+    updateCam: () => void;
 }
 
-export function createCamParamsUI(
-    cam: Camera,
-    view: Mat4,
-    projection: Mat4,
-    mvp: Mat4
-): CamParamsUI {
+export function createCamParamsUI(cam: Camera): CamParamsUI {
     // Create container
     const container = document.createElement("div");
     container.id = "cam-controls";
@@ -71,7 +63,7 @@ export function createCamParamsUI(
     const nearVal = document.getElementById("cam-near-val")!;
     const farVal = document.getElementById("cam-far-val")!;
 
-    function updateMatrices() {
+    function updateCam() {
         // Update camera position
         setVec3(cam.position, parseFloat(posX.value), parseFloat(posY.value), parseFloat(posZ.value));
         posXVal.textContent = parseFloat(posX.value).toFixed(1);
@@ -85,23 +77,17 @@ export function createCamParamsUI(
         fovVal.textContent = fov.value;
         nearVal.textContent = parseFloat(near.value).toFixed(2);
         farVal.textContent = far.value;
-
-        // Recalculate matrices
-        lookAt(view, cam.right, cam.up, cam.forward, cam.position);
-        perspective(projection, cam.fovy, cam.aspect, cam.near, cam.far);
-        multiply(mvp, projection, view);
     }
 
     // Add event listeners
     [posX, posY, posZ, fov, near, far].forEach(input => {
-        input.addEventListener("input", updateMatrices);
+        input.addEventListener("input", updateCam);
     });
 
     // Initial update
-    updateMatrices();
+    updateCam();
 
     return {
-        update: updateMatrices
+        updateCam
     };
 }
-

@@ -1,6 +1,7 @@
 // buildScripts/parseObj.ts
 import fs from "fs";
 import readline from "readline";
+import { opendir } from "fs/promises";
 async function loadObj(filePath) {
   const modelnamesplit = filePath.split("/").pop()?.split(".");
   if (!modelnamesplit || modelnamesplit.length === 0) {
@@ -81,10 +82,20 @@ async function loadObj(filePath) {
     "utf8"
   );
 }
-loadObj("./assets/models/stanfordbunny.obj").catch((err) => {
-  console.error(err);
-  process.exit(1);
-});
+var modelDir = "./assets/models";
+var modelNames = [];
+var dir = await opendir(modelDir);
+for await (const d of dir) {
+  if (d.isFile()) {
+    modelNames.push(d.name);
+  }
+}
+for (const modelName of modelNames) {
+  if (modelName.endsWith(".obj")) {
+    console.log(`Processing ${modelName}...`);
+    await loadObj(`${modelDir}/${modelName}`);
+  }
+}
 export {
   loadObj
 };
