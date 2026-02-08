@@ -1,6 +1,6 @@
-import Camera from "./graphics/camera.js";
-import { lookAt, perspective, multiply } from "../math/mat4.js";
-import { setVec3 } from "../math/vec3.js";
+import Camera from "@/src/graphics/camera";
+import { lookAt, perspective, multiply } from "@/math/mat4"
+import { setVec3 } from "@/math/vec3";
 
 type Mat4 = Float32Array & { length: 16 };
 
@@ -23,12 +23,12 @@ export function createCamParamsUI(
         <div class="section-title">Position</div>
         <div class="control-row">
             <label>X:</label>
-            <input type="range" id="cam-pos-x" min="-10" max="10" step="0.1" value="${cam.position[0]}">
+            <input type="range" id="cam-pos-x" min="-1" max="1" step="0.01" value="${cam.position[0]}">
             <span class="value" id="cam-pos-x-val">${cam.position[0].toFixed(1)}</span>
         </div>
         <div class="control-row">
             <label>Y:</label>
-            <input type="range" id="cam-pos-y" min="-10" max="10" step="0.1" value="${cam.position[1]}">
+            <input type="range" id="cam-pos-y" min="-1" max="1" step="0.01" value="${cam.position[1]}">
             <span class="value" id="cam-pos-y-val">${cam.position[1].toFixed(1)}</span>
         </div>
         <div class="control-row">

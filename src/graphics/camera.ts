@@ -1,4 +1,4 @@
-import {allocVec3, Vec3} from "../../math/vec3.js";
+import {allocVec3, Vec3} from "@/math/vec3";
 
 class Camera {
 

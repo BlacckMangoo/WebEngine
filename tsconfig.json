@@ -8,7 +8,13 @@
     "skipLibCheck": true,
     "outDir": "dist",
     "types": ["node"],
-    "moduleResolution": "bundler"
+    "moduleResolution": "bundler",
+    "resolveJsonModule": true,
+    "baseUrl": ".",
+    "paths": {
+      "@/*": ["./*"]
+    }
+
   },
-  "include": ["src"]
+  "include": ["src", "math", "buildScripts"]
 }

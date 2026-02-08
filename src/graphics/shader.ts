@@ -1,5 +1,5 @@
-import {gl} from "./context.js";
-import {SHADERS} from "./shaderSrc.js";
+import {gl} from "@/src/graphics/context";
+import {SHADERS} from "@/src/graphics/shaderSrc";
 
 function compileShader(type: number, src: string): WebGLShader {
     const s = gl!.createShader(type)!;
