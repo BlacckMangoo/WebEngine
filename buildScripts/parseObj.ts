@@ -1,11 +1,7 @@
 import fs from "fs"
 import readline from "readline"
-import {allocVec3, Vec3} from "@/math/vec3";
+import {opendir} from "fs/promises";
 
-export interface ObjData {
-    vertices : Vec3[] ;
-    indices  : number[]   ;
-}
 
 
 // Load OBJ Data from file path
@@ -116,7 +112,21 @@ export async function loadObj(filePath: string) {
     )
 }
 
-loadObj( "./assets/models/stanfordbunny.obj").catch(err => {
-    console.error(err);
-    process.exit(1);
-});
+const modelDir = "./assets/models";
+
+const modelNames: string[] = [];
+
+const dir = await opendir(modelDir);
+for await (const d of dir) {
+    if (d.isFile()) {
+        modelNames.push(d.name);
+    }
+}
+
+for (const modelName of modelNames) {
+    if (modelName.endsWith(".obj")) {
+        console.log(`Processing ${modelName}...`);
+        await loadObj(`${modelDir}/${modelName}`);
+    }
+}
+
