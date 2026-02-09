@@ -9,6 +9,13 @@ class Camera {
      far : number  = 100 ;
      fovy : number = Math.PI/4;
 
+     // view parameters
+
+    pitch : number = 0; // rotation around x-axis
+    yaw : number = 0;   // rotation around y-axis
+    roll : number = 0;  // rotation around z-axis
+
+
      // projection parameters
 
      // Basis Vectors For Camera Coordinates

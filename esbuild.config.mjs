@@ -15,7 +15,7 @@ await Promise.all([
 
     // Node tooling bundle
     esbuild.build({
-        entryPoints: ["buildScripts/parseObj.ts"],
+        entryPoints: ["buildScripts/parseObj.ts" , "buildScripts/buildShaders.ts" ],
         outdir: "dist",
         bundle: true,
         format: "esm",

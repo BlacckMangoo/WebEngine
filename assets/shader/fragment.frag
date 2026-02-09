@@ -1,6 +1,11 @@
+#version 300 es
+
 precision mediump float;
-varying vec3 v_normal;
+in vec3 v_normal;
 uniform vec3 u_light_dir;
+uniform vec3 u_base_color ;
+
+out vec4 fragColor;
 
 void main() {
     vec3 n = normalize(v_normal);
@@ -9,7 +14,5 @@ void main() {
 
     // Add ambient so it's not completely dark
     float ambient = 0.1;
-    vec3 baseColor = vec3(1.0, 0.4, 0.3);
-
-    gl_FragColor = vec4(baseColor * (ambient + diff), 1.0);
+    fragColor = vec4(u_base_color * (ambient + diff), 1.0);
 }

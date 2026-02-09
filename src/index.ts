@@ -1,134 +1,67 @@
 import {gl, canvas} from "@/src/graphics/context";
-import {program} from "@/src/graphics/shader";
-import {allocMat4, multiply, lookAt, perspective, translate, scale, rotate, identity} from "@/math/mat4";
 import Camera from "@/src/graphics/camera";
-import {createCamParamsUI} from "@/ui/camParamsUi";
-import {createModelTransformsUI} from "@/ui/modelTransformsUi";
-import horse from "@/assets/models/horse.json";
-import {allocVec3, setVec3, Vec3} from "@/math/vec3";
-import {Mesh, ModelData} from "@/src/graphics/mesh";
-const modelData: ModelData = horse as ModelData ;
+import {Mesh, VertexLayout} from "@/src/graphics/mesh";
+import {Renderer} from "@/src/graphics/renderer";
+import {Scene} from "@/src/graphics/scene";
+import {Assets} from "@/src/assetManager";
+import {Material, Renderable} from "@/src/graphics/renderable";
+import {InputManger} from "@/src/inputManager";
+import {Transform} from "@/src/graphics/transform";
+import {COLORS} from "@/src/graphics/color";
+import {FixedStepClock} from "@/src/graphics/clock";
 
 
-const aspect = canvas.width / canvas.height;
-const cam : Camera = new Camera(aspect, 0.1, 100, Math.PI / 4);
+// Layout: position (3 floats) + normal (3 floats) = 6 floats * 4 bytes = 24 bytes stride
+const posNormLayout = new VertexLayout(24, [
+    {location: 0, size: 3, type: gl.FLOAT, normalized: false, offset: 0},
+    {location: 1, size: 3, type: gl.FLOAT, normalized: false, offset: 12}
+]);
 
-const mesh = new Mesh(modelData);
+const transformBunny : Transform = new Transform();
+transformBunny.setTranslation( 1,2,-4);
 
-// bind index buffer
-gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, mesh.ibuf);
-gl.bufferData(gl.ELEMENT_ARRAY_BUFFER, mesh.indices, gl.STATIC_DRAW);
+const transformHorse : Transform  = new Transform();
+transformHorse.setTranslation( 0,0,0);
 
-// bind vertex buffer
-gl.bindBuffer(gl.ARRAY_BUFFER, mesh.vbuf);
-gl.bufferData(gl.ARRAY_BUFFER, mesh.vertices, gl.STATIC_DRAW);
-
-// bind normal buffer
-gl.bindBuffer(gl.ARRAY_BUFFER, mesh.nbuf);
-gl.bufferData(gl.ARRAY_BUFFER, mesh.normals, gl.STATIC_DRAW);
-
-// Position attribute
-const aPos = gl.getAttribLocation(program, "a_pos");
-if (aPos === -1) throw new Error("a_pos not found");
-gl.bindBuffer(gl.ARRAY_BUFFER, mesh.vbuf);
-gl.enableVertexAttribArray(aPos);
-gl.vertexAttribPointer(aPos, 3, gl.FLOAT, false, 0, 0);
-
-// Normal attribute
-const aNormal = gl.getAttribLocation(program, "a_normal");
-if (aNormal === -1) throw new Error("a_normal not found");
-gl.bindBuffer(gl.ARRAY_BUFFER, mesh.nbuf);
-gl.enableVertexAttribArray(aNormal);
-gl.vertexAttribPointer(aNormal, 3, gl.FLOAT, false, 0, 0);
-
-
-const uSize = gl.getUniformLocation(program, "u_size");
-if (!uSize) throw new Error("u_size not found");
-
-const uMvp = gl.getUniformLocation(program, "u_mvp");
-if (!uMvp) throw new Error("u_mvp not found");
-
-const uLightDir = gl.getUniformLocation(program, "u_light_dir");
-if (!uLightDir) throw new Error("u_light_dir not found");
-
-
-let  time = 0 ;
-const size = allocVec3();
-const view = allocMat4();
-const projection = allocMat4();
-const model = allocMat4();
-const mvp = allocMat4();
-const viewProj = allocMat4();
-
-// Temp matrices for TRS computation
-const tempS = allocMat4();
-const tempR = allocMat4();
-
-const camUI = createCamParamsUI(cam);
-const modelUI = createModelTransformsUI(mesh.meshTransform);
-
-const fixedDt = 1 / 120;
-let accumulator = 0;
-let lastTime = performance.now();
-
-
-gl.useProgram(program);
-gl.enable(gl.DEPTH_TEST);
-
-function Render(): void {
-    // Update UI values
-    camUI.updateCam();
-    modelUI.updateMesh();
-
-    // Compute View and Projection matrices from camera
-    lookAt(view, cam.right, cam.up, cam.forward, cam.position);
-    perspective(projection, cam.fovy, cam.aspect, cam.near, cam.far);
-    multiply(viewProj, projection, view);
-
-    // Compute Model matrix from TRS: M = T * R * S
-    const t = modelUI.transform;
-    identity(tempS);
-    scale(tempS, tempS, t.scaling);
-    rotate(tempR, tempS, t.rotAngle, t.rotAxis);
-    translate(model, tempR, t.translation);
-
-    // Compute MVP = Projection * View * Model
-    multiply(mvp, viewProj, model);
-
-    gl.viewport(0, 0, canvas.width, canvas.height);
-    gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
-
-    gl.uniformMatrix4fv(uMvp, false, mvp);
-    gl.uniform3fv(uSize, size);
-    gl.uniform3f(uLightDir, 0.5, 1.0, 0.3);
-
-    gl.drawElements(
-        gl.TRIANGLES,
-        mesh.indices.length,
-        gl.UNSIGNED_INT,
-        0
-    );
+const bunnymat : Material = {
+    shader : Assets.getShader("default"),
+    color : COLORS.RED,
 }
 
-function FixedUpdate(dt: number): void {
-    time += dt;
-    setVec3(
-        size,
-        1,1,1
-    );
+const horsemat : Material = {
+    shader : Assets.getShader("default"),
+    color : COLORS.BLACK,
 }
 
-function gameloop(now: number): void {
-    let frameTime = (now - lastTime) / 1000;
-    lastTime = now;
-    if (frameTime > 0.25) frameTime = 0.25;
-    accumulator += frameTime;
+const scene = new Scene(new Camera(canvas.width / canvas.height, 0.1, 100, Math.PI / 4));
 
-    while (accumulator >= fixedDt) {
-        FixedUpdate(fixedDt);
-        accumulator -= fixedDt;
+const horseMesh = new Mesh(Assets.getModel("horse"), gl, posNormLayout);
+const horseRenderable = new Renderable(horseMesh,horsemat, transformHorse);
+
+const bunnyMesh = new Mesh(Assets.getModel("bunny"), gl, posNormLayout);
+const bunnyRenderable = new Renderable(bunnyMesh,bunnymat,transformBunny);
+
+
+scene.add(horseRenderable);
+scene.add(bunnyRenderable);
+
+const renderer = new Renderer();
+const clock = new FixedStepClock(1/60)
+
+function fixedUpdate(deltaTime : number): void {
+    InputManger.update();
+    transformBunny.setTranslation( 1,2,-4 + Math.sin(clock.elapsedTime) );
+}
+
+function gameloop(): void {
+
+    const  steps = clock.tick();
+    for(let i = 0; i < steps; i++)
+    {
+        fixedUpdate(clock.fixedDT);
     }
-    Render();
+
+    renderer.render(scene);
     requestAnimationFrame(gameloop);
 }
 

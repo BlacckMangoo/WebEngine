@@ -6,7 +6,7 @@
   "type": "module",
   "scripts": {
     "build": "node esbuild.config.mjs",
-    "run:obj": "node dist/parseObj.js"
+    "assets": "node dist/parseObj.js && node dist/buildShaders.js"
   },
   "devDependencies": {
     "@types/node": "^25.2.1",
