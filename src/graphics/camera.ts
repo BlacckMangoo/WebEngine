@@ -1,4 +1,5 @@
 import {allocVec3, Vec3} from "@/math/vec3";
+import {allocMat4, multiply, lookAt, perspective, translate, scale, rotate, identity, Mat4} from "@/math/mat4";
 
 class Camera {
 
@@ -9,11 +10,6 @@ class Camera {
      far : number  = 100 ;
      fovy : number = Math.PI/4;
 
-     // view parameters
-
-    pitch : number = 0; // rotation around x-axis
-    yaw : number = 0;   // rotation around y-axis
-    roll : number = 0;  // rotation around z-axis
 
 
      // projection parameters
@@ -21,7 +17,7 @@ class Camera {
      // Basis Vectors For Camera Coordinates
     // Modulus of these vectors should be 1, and they should be orthogonal to each other.
 
-     position : Vec3  = allocVec3(0, 0, 5);
+     position : Vec3  = allocVec3(0, 0, 2);
      right : Vec3 = allocVec3(1, 0, 0);
      up : Vec3 = allocVec3(0, 1, 0);
      forward : Vec3 = allocVec3(0, 0, -1);
@@ -32,6 +28,17 @@ class Camera {
         this.far = far;
         this.fovy = fovy;
      }
+
+     public  getViewMatrix( view: Mat4 ): Mat4 {
+
+         return lookAt(view,this.up, this.forward, this.position);
+     }
+
+     public getProjectionMatrix( projection: Mat4 ): Mat4 {
+         return perspective(projection, this.fovy, this.aspect, this.near, this.far);
+     }
+
 }
 
 export default Camera;
+

@@ -1,5 +1,5 @@
 import {Vec2} from "./vec2.js";
-import {Vec3} from "./vec3.js";
+import {allocVec3, cross, normalize, Vec3} from "./vec3.js";
 export type Mat4 = Float32Array & {length: 16};
 
 function create(): Mat4 {
@@ -28,8 +28,15 @@ export function identity(out: Mat4): Mat4 {
 // view matrix is the transformation matrix that transforms world space coordinates into
 //camera space coordinates.
 
+// right up and forward must be unit vectors , they must be orthonormal to each other. eye is the position of the camera in world space.
 
-export function lookAt(out :Mat4 , right : Vec3 , up : Vec3, forward : Vec3, eye: Vec3): Mat4 {
+export function lookAt(out :Mat4, up : Vec3, forward : Vec3, eye: Vec3): Mat4 {
+
+    normalize(forward,forward);
+    const right : Vec3 = allocVec3();
+    cross(right, forward, up);
+    normalize(right, right);
+
     const a00 = right[0], a01 = right[1], a02 = right[2];
     const a10 = up[0], a11 = up[1], a12 = up[2];
     const a20 = -forward[0], a21 = -forward[1], a22 = -forward[2];

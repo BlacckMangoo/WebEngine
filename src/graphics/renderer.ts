@@ -22,11 +22,11 @@ export class Renderer {
         this.initialized = true;
     }
 
-    private computeMVP(camera: Camera, transform: Transform): Mat4 {
+    private updateMVP(camera: Camera, transform: Transform): Mat4 {
         // View-Projection
-        lookAt(this.view, camera.right, camera.up, camera.forward, camera.position);
-        perspective(this.projection, camera.fovy, camera.aspect, camera.near, camera.far);
-        multiply(this.viewProj, this.projection, this.view);
+
+
+        multiply(this.viewProj, camera.getProjectionMatrix(this.projection), camera.getViewMatrix(this.view));
 
         // Model: M = T * R * S
         identity(this.model);
@@ -40,7 +40,7 @@ export class Renderer {
     }
 
     private draw(camera: Camera, renderable: Renderable): void {
-        const mvp = this.computeMVP(camera, renderable.transform);
+        const mvp = this.updateMVP(camera, renderable.transform);
         const color = allocVec3(renderable.mat.color.r, renderable.mat.color.g, renderable.mat.color.b);
         renderable.mat.shader.use();
         renderable.mat.shader.setMat4("u_mvp", mvp);

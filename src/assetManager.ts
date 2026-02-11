@@ -38,7 +38,7 @@ class AssetManager {
     // Model management
     registerModel(name: string, model: ModelData): void {
         if (this.models.has(name)) {
-            console.warn(`Model "${name}" already registered, overwriting.`);
+            console.warn(`Model "${name}" already registered.`);
         }
         this.models.set(name, model);
     }
@@ -55,6 +55,7 @@ class AssetManager {
 // Export singleton instance
 export const Assets = AssetManager.getInstance();
 // Register assets
+
 Assets.registerModel("horse", horse as ModelData);
 Assets.registerModel("bunny", bunny as ModelData);
 Assets.registerShader("default", new Shader(SHADERS.vertex, SHADERS.fragment));
