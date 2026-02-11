@@ -3,6 +3,7 @@ import {ModelData} from "@/src/graphics/mesh";
 import horse from "@public/assets/models/horse.json";
 import bunny from "@public/assets/models/stanfordbunny.json";
 import {SHADERS} from "@/src/graphics/shaderSrc";
+import {CUBE, PLANE, TRIANGLE, PYRAMID} from "@/src/graphics/primitives";
 
 class AssetManager {
     private static instance: AssetManager;
@@ -55,7 +56,15 @@ class AssetManager {
 //  singleton instance
 export const Assets = AssetManager.getInstance();
 
-
+// Register models from files
 Assets.registerModel("horse", horse as ModelData);
 Assets.registerModel("bunny", bunny as ModelData);
+
+// Register primitive models
+Assets.registerModel("cube", CUBE);
+Assets.registerModel("plane", PLANE);
+Assets.registerModel("triangle", TRIANGLE);
+Assets.registerModel("pyramid", PYRAMID);
+
+// Register shaders
 Assets.registerShader("default", new Shader(SHADERS.vertex, SHADERS.fragment));
