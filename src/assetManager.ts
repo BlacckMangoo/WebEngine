@@ -52,9 +52,9 @@ class AssetManager {
     }
 }
 
-// Export singleton instance
+//  singleton instance
 export const Assets = AssetManager.getInstance();
-// Register assets
+
 
 Assets.registerModel("horse", horse as ModelData);
 Assets.registerModel("bunny", bunny as ModelData);

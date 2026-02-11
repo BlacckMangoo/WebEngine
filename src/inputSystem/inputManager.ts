@@ -81,7 +81,9 @@ export class InputManager {
 
     static readonly KeyCodes = KeyCode;
     private keyState = new Map<string,boolean>();
+    private mouseButtonState = new Map<number,boolean>();
 
+    // button 1 = left, 2 = middle, 3 = right
 
     private mousePosDx = 0;
     private mousePosDy = 0;
@@ -99,6 +101,11 @@ export class InputManager {
     update()
     {
         const events = this.inputEventQueue.consume();
+
+        // Reset mouse delta at the start of each frame
+        this.mousePosDx = 0;
+        this.mousePosDy = 0;
+
         for (const event of events) {
             if(event.type === "Keydown") {
                 this.keyState.set(event.key,true);
@@ -110,6 +117,12 @@ export class InputManager {
                 this.mousePosDx += event.dx;
                 this.mousePosDy += event.dy;
             }
+            else if(event.type === "Mousedown") {
+                this.mouseButtonState.set(event.button,true);
+            }
+            else if(event.type === "Mouseup") {
+                this.mouseButtonState.set(event.button,false);
+            }
         }
 
         setVec2(this.mousePos,this.mousePosDx,this.mousePosDy);
@@ -117,6 +130,15 @@ export class InputManager {
 
      isKeyPressed(key: KeyCode): boolean {
         return this.keyState.get(key) ?? false;
+    }
+
+    getMousePosition(): Vec2 {
+        return this.mousePos;
+    }
+
+    isMouseButtonPressed(button: number): boolean {
+        // Implement mouse button state tracking if needed
+        return false;
     }
 
 }

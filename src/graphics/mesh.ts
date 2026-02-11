@@ -1,6 +1,7 @@
 
+import {gl} from "@/src/graphics/context";
 
-export type VertexAttribute = {
+ type VertexAttribute = {
     location: number
     size: number
     type: GLenum
@@ -8,7 +9,7 @@ export type VertexAttribute = {
     offset: number
 }
 
-export class VertexLayout {
+ class VertexLayout {
     stride: number
     attributes: VertexAttribute[]
 
@@ -24,7 +25,7 @@ export interface ModelData {
     indices: number[];
 }
 
-export class Mesh {
+ export class Mesh {
 
     interleavedData: Float32Array = new Float32Array();
     indices: Uint32Array = new Uint32Array();
@@ -92,3 +93,13 @@ export class Mesh {
     }
 
 }
+
+ export const VertexLayouts = {
+    // Layout: position (3 floats) + normal (3 floats) = 6 floats * 4 bytes = 24 bytes stride
+     posNormLayout : new VertexLayout(24, [
+        {location: 0, size: 3, type: gl.FLOAT, normalized: false, offset: 0},
+        {location: 1, size: 3, type: gl.FLOAT, normalized: false, offset: 12}
+    ])
+} as const
+
+

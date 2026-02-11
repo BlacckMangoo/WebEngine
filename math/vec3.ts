@@ -18,6 +18,25 @@ export function setVec3(out: Vec3, a: number, b: number, c: number): void {
     out[2] = c;
 }
 
+export function translateX(out :Vec3 , delta : number)
+{
+    out[0] += delta;
+    return out;
+}
+
+export function translateY(out :Vec3 , delta : number)
+{
+    out[1] += delta;
+    return out;
+}
+
+export function translateZ(out :Vec3 , delta : number)
+{
+    out[2] += delta;
+    return out;
+}
+
+
 export function cross(out: Vec3, a: Vec3, b: Vec3): void {
     const ax = a[0], ay = a[1], az = a[2];
     const bx = b[0], by = b[1], bz = b[2];
@@ -37,3 +56,14 @@ export function normalize(out: Vec3, a: Vec3): void {
         out[2] = z * len;
     }
 }
+
+/**
+ * Adds a scaled vector to another vector: out = a + b * scale
+ */
+export function scaleAndAdd(out: Vec3, a: Vec3, b: Vec3, scale: number): Vec3 {
+    out[0] = a[0] + b[0] * scale;
+    out[1] = a[1] + b[1] * scale;
+    out[2] = a[2] + b[2] * scale;
+    return out;
+}
+

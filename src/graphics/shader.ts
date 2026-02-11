@@ -54,6 +54,14 @@ export class Shader {
         gl.uniform3fv(loc, vec);
     }
 
+    setInt(name: string, value: number) {
+        const loc = gl.getUniformLocation(this.program, name);
+        if (loc === null) {
+            throw new Error(`Uniform ${name} not found`);
+        }
+        gl.uniform1i(loc, value);
+    }
+
 }
 
 export const program = createProgram(SHADERS.vertex, SHADERS.fragment);
