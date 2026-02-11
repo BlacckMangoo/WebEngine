@@ -1,7 +1,7 @@
 import {Shader} from "@/src/graphics/shader";
 import {ModelData} from "@/src/graphics/mesh";
-import horse from "@/assets/models/horse.json";
-import bunny from "@/assets/models/stanfordbunny.json";
+import horse from "@public/assets/models/horse.json";
+import bunny from "@public/assets/models/stanfordbunny.json";
 import {SHADERS} from "@/src/graphics/shaderSrc";
 
 class AssetManager {

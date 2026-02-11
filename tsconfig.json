@@ -12,7 +12,8 @@
     "resolveJsonModule": true,
     "baseUrl": ".",
     "paths": {
-      "@/*": ["./*"]
+      "@/*": ["./*"],
+      "@public/*": ["./public/*"]
     }
 
   },

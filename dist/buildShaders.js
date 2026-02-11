@@ -1,7 +1,7 @@
 // buildScripts/buildShaders.ts
 import { opendir, readFile, writeFile, mkdir } from "fs/promises";
 import path from "path";
-var SHADER_DIR = "./assets/shader";
+var SHADER_DIR = "./public/assets/shader";
 var OUT_DIR = "./src/graphics";
 var OUT_FILE = path.join(OUT_DIR, "shaderSrc.ts");
 async function buildShaders() {

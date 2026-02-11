@@ -72,7 +72,7 @@ async function loadObj(filePath) {
     }
   }
   fs.writeFileSync(
-    "./assets/models/" + modelname + ".json",
+    "./public/assets/models/" + modelname + ".json",
     JSON.stringify({
       // flatten vertices to array of numbers
       vertices: Array.from(vertices),
@@ -82,7 +82,7 @@ async function loadObj(filePath) {
     "utf8"
   );
 }
-var modelDir = "./assets/models";
+var modelDir = "./public/assets/models";
 var modelNames = [];
 var dir = await opendir(modelDir);
 for await (const d of dir) {

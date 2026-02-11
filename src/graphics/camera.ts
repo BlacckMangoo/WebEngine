@@ -18,9 +18,9 @@ class Camera {
     forward: Vec3 = allocVec3(0, 0, -1);
 
     // Camera controller state
-    private yaw: number = -Math.PI / 2; // Start looking forward (-Z)
+    private yaw: number = -Math.PI / 2;
     private pitch: number = 0;
-    private sensitivity: number = 0.002; // Mouse sensitivity
+    private sensitivity: number = 0.002;
     private moveSpeed: number = 2.0;
     private readonly pitchLimit = Math.PI / 2 - 0.01; // Prevent gimbal lock
 

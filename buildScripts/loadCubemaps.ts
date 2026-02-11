@@ -1,7 +1,7 @@
 import fs from "fs";
 import path from "path";
 
-const CM_DIR = "./assets/cubemaps";
+const CM_DIR = "./public/assets/cubemaps";
 
 const REQUIRED_FACES = ["px", "nx", "py", "ny", "pz", "nz"];
 
@@ -24,7 +24,8 @@ function loadCubemap(dirName: string): CubeMapData {
             throw new Error(`Missing ${face} in cubemap ${dirName}`);
         }
 
-        result[face] = path.join(cubeMapDir, file);
+        // Generate path relative to public folder (browser-friendly)
+        result[face] = `./assets/cubemaps/${dirName}/${file}`;
     }
 
     return {

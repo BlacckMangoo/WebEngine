@@ -100,7 +100,7 @@ export async function loadObj(filePath: string) {
 
 
     fs.writeFileSync(
-        "./assets/models/" + modelname + ".json",
+        "./public/assets/models/" + modelname + ".json",
         JSON.stringify({
             // flatten vertices to array of numbers
             vertices: Array.from(vertices),
@@ -112,7 +112,7 @@ export async function loadObj(filePath: string) {
     )
 }
 
-const modelDir = "./assets/models";
+const modelDir = "./public/assets/models";
 
 const modelNames: string[] = [];
 
