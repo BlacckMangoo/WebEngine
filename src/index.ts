@@ -1,6 +1,6 @@
 import {gl, canvas} from "@/src/graphics/context";
 import Camera from "@/src/graphics/camera";
-import {VertexLayouts,Mesh} from "@/src/graphics/mesh";
+import {Mesh} from "@/src/graphics/mesh";
 import {Renderer} from "@/src/graphics/renderer";
 import {Scene} from "@/src/graphics/scene";
 import {Assets} from "@/src/assetManager";
@@ -26,7 +26,7 @@ const bunnymat: Material = {
     color: COLORS.RED,
 }
 
-const bunnyMesh = new Mesh(Assets.getModel("bunny"), gl, VertexLayouts.posNormLayout);
+const bunnyMesh = new Mesh(Assets.getModel("bunny"), gl);
 const bunnyRenderable = new Renderable(bunnyMesh, bunnymat, transformBunny);
 scene.add(bunnyRenderable);
 
@@ -35,28 +35,10 @@ const transformCube: Transform = new Transform();
 transformCube.setTranslation(-1.5, 0, 0);
 transformCube.setScale(0.8, 0.8, 0.8);
 
-const cubeMat: Material = {
-    shader: Assets.getShader("default"),
-    color: COLORS.BLUE,
-}
 
-const cubeMesh = new Mesh(Assets.getModel("cube"), gl, VertexLayouts.posNormLayout);
-const cubeRenderable = new Renderable(cubeMesh, cubeMat, transformCube);
+const cubeMesh = new Mesh(Assets.getModel("cube"), gl);
+const cubeRenderable = new Renderable(cubeMesh, bunnymat, transformCube);
 scene.add(cubeRenderable);
-
-// Pyramid (top right)
-const transformPyramid: Transform = new Transform();
-transformPyramid.setTranslation(1.5, 1, 0);
-transformPyramid.setScale(0.8, 0.8, 0.8);
-
-const pyramidMat: Material = {
-    shader: Assets.getShader("default"),
-    color: COLORS.MAGENTA,
-}
-
-const pyramidMesh = new Mesh(Assets.getModel("pyramid"), gl, VertexLayouts.posNormLayout);
-const pyramidRenderable = new Renderable(pyramidMesh, pyramidMat, transformPyramid);
-scene.add(pyramidRenderable);
 
 
 function fixedUpdate(deltaTime: number): void {

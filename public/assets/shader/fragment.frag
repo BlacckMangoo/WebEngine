@@ -14,7 +14,7 @@ void main() {
 
     vec3 l = normalize(u_light_dir);
     float diff = max(dot(n, l), 0.0);
-    float ambient = 0.1;
+    float ambient = 0.4;
 
     vec3 view_dir = normalize(v_world_pos - u_camera_pos);
     vec3 reflect_dir = reflect(view_dir, n);

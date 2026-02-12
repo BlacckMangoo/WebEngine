@@ -95,7 +95,7 @@ export const CUBE: ModelData = {
 };
 
 // Plane (quad) - useful for testing
-export const PLANE: ModelData = {
+export const QUAD: ModelData = {
     vertices: [
         -1.0, -1.0, 0.0,
          1.0, -1.0, 0.0,

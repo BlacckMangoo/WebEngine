@@ -53,7 +53,6 @@ export async function loadCubemapImages(entry: CubeMapEntry) :Promise<CubemapIma
     }
 }
 
-// Generate and  export all CubeMapTex
 
  const CubeMapTextures: Record<string, WebGLTexture> = {};
 

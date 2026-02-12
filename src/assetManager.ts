@@ -3,7 +3,7 @@ import {ModelData} from "@/src/graphics/mesh";
 import horse from "@public/assets/models/horse.json";
 import bunny from "@public/assets/models/stanfordbunny.json";
 import {SHADERS} from "@/src/graphics/shaderSrc";
-import {CUBE, PLANE, TRIANGLE, PYRAMID} from "@/src/graphics/primitives";
+import {CUBE, QUAD, TRIANGLE, PYRAMID} from "@/src/graphics/primitives";
 
 class AssetManager {
     private static instance: AssetManager;
@@ -62,7 +62,7 @@ Assets.registerModel("bunny", bunny as ModelData);
 
 // Register primitive models
 Assets.registerModel("cube", CUBE);
-Assets.registerModel("plane", PLANE);
+Assets.registerModel("plane", QUAD);
 Assets.registerModel("triangle", TRIANGLE);
 Assets.registerModel("pyramid", PYRAMID);
 
