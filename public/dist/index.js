@@ -314,10 +314,6 @@ var Camera = class {
   right = allocVec3(1, 0, 0);
   up = allocVec3(0, 1, 0);
   forward = allocVec3(0, 0, -1);
-  // Camera controller state
-  yaw = -Math.PI / 2;
-  pitch = 0;
-  sensitivity = 2e-3;
   moveSpeed = 2;
   pitchLimit = Math.PI / 2 - 0.01;
   // Prevent gimbal lock
@@ -334,28 +330,7 @@ var Camera = class {
     return perspective(projection, this.fovy, this.aspect, this.near, this.far);
   }
   processInput(input2, deltaTime) {
-    this.updateOrientation(input2);
     this.updateMovement(input2, deltaTime);
-  }
-  updateOrientation(input2) {
-    const mousePos = input2.getMousePosition();
-    const dx = mousePos[0];
-    const dy = mousePos[1];
-    this.yaw -= dx * this.sensitivity;
-    this.pitch -= dy * this.sensitivity;
-    this.pitch = Math.max(-this.pitchLimit, Math.min(this.pitchLimit, this.pitch));
-    this.updateCameraVectors();
-  }
-  updateCameraVectors() {
-    this.forward[0] = Math.cos(this.pitch) * Math.cos(this.yaw);
-    this.forward[1] = Math.sin(this.pitch);
-    this.forward[2] = Math.cos(this.pitch) * Math.sin(this.yaw);
-    normalize(this.forward, this.forward);
-    const worldUp = allocVec3(0, 1, 0);
-    cross(this.right, worldUp, this.forward);
-    normalize(this.right, this.right);
-    cross(this.up, this.forward, this.right);
-    normalize(this.up, this.up);
   }
   updateMovement(input2, deltaTime) {
     const speed = this.moveSpeed * deltaTime;
@@ -381,6 +356,19 @@ var Camera = class {
 };
 var camera_default = Camera;
 
+// src/core/aabb.ts
+var AABB = class {
+  constructor(min, max) {
+    this.min = min;
+    this.max = max;
+    this.min = min;
+    this.max = max;
+  }
+  intersects(other) {
+    return this.min[0] <= other.max[0] && this.max[0] >= other.min[0] && (this.min[1] <= other.max[1] && this.max[1] >= other.min[1]) && (this.min[2] <= other.max[2] && this.max[2] >= other.min[2]);
+  }
+};
+
 // src/graphics/mesh.ts
 var VertexLayout = class {
   stride;
@@ -394,32 +382,128 @@ var pos3norm3 = new VertexLayout(24, [
   { location: 0, size: 3, type: gl.FLOAT, normalized: false, offset: 0 },
   { location: 1, size: 3, type: gl.FLOAT, normalized: false, offset: 12 }
 ]);
-var Mesh = class {
-  interleavedData = new Float32Array();
+function createAABBWireframeData(aabb) {
+  const minX = aabb.min[0];
+  const minY = aabb.min[1];
+  const minZ = aabb.min[2];
+  const maxX = aabb.max[0];
+  const maxY = aabb.max[1];
+  const maxZ = aabb.max[2];
+  const vertices = [
+    minX,
+    minY,
+    minZ,
+    maxX,
+    minY,
+    minZ,
+    maxX,
+    maxY,
+    minZ,
+    minX,
+    maxY,
+    minZ,
+    minX,
+    minY,
+    maxZ,
+    maxX,
+    minY,
+    maxZ,
+    maxX,
+    maxY,
+    maxZ,
+    minX,
+    maxY,
+    maxZ
+  ];
+  const indices = [
+    0,
+    1,
+    1,
+    2,
+    2,
+    3,
+    3,
+    0,
+    4,
+    5,
+    5,
+    6,
+    6,
+    7,
+    7,
+    4,
+    0,
+    4,
+    1,
+    5,
+    2,
+    6,
+    3,
+    7
+  ];
+  return { vertices, indices };
+}
+function createAABBFromVertices(vertices) {
+  let minX = Number.POSITIVE_INFINITY;
+  let minY = Number.POSITIVE_INFINITY;
+  let minZ = Number.POSITIVE_INFINITY;
+  let maxX = Number.NEGATIVE_INFINITY;
+  let maxY = Number.NEGATIVE_INFINITY;
+  let maxZ = Number.NEGATIVE_INFINITY;
+  let x, y, z;
+  for (let i = 0; i < vertices.length; i += 3) {
+    x = vertices[i];
+    y = vertices[i + 1];
+    z = vertices[i + 2];
+    if (x < minX) minX = x;
+    if (y < minY) minY = y;
+    if (z < minZ) minZ = z;
+    if (x > maxX) maxX = x;
+    if (y > maxY) maxY = y;
+    if (z > maxZ) maxZ = z;
+  }
+  const min = allocVec3(minX, minY, minZ);
+  const max = allocVec3(maxX, maxY, maxZ);
+  return new AABB(min, max);
+}
+var Mesh = class _Mesh {
+  vertexData = new Float32Array();
   indices = new Uint32Array();
   vbo;
   ibo;
   layout;
   vertexCount = 0;
-  constructor(data, gl2) {
+  aabb;
+  primitive;
+  constructor(data, gl2, primitive = gl2.TRIANGLES) {
     this.indices = new Uint32Array(data.indices);
     this.layout = pos3norm3;
     this.vertexCount = data.vertices.length / 3;
-    this.interleavedData = new Float32Array(this.vertexCount * 6);
-    for (let i = 0; i < this.vertexCount; i++) {
-      this.interleavedData[i * 6] = data.vertices[i * 3];
-      this.interleavedData[i * 6 + 1] = data.vertices[i * 3 + 1];
-      this.interleavedData[i * 6 + 2] = data.vertices[i * 3 + 2];
-      this.interleavedData[i * 6 + 3] = data.normals[i * 3];
-      this.interleavedData[i * 6 + 4] = data.normals[i * 3 + 1];
-      this.interleavedData[i * 6 + 5] = data.normals[i * 3 + 2];
+    const normals = data.normals ?? new Array(this.vertexCount * 3).fill(0);
+    if (normals.length !== this.vertexCount * 3) {
+      throw new Error("Invalid normals length for mesh");
     }
+    this.primitive = primitive;
+    this.vertexData = new Float32Array(this.vertexCount * 6);
+    for (let i = 0; i < this.vertexCount; i++) {
+      this.vertexData[i * 6] = data.vertices[i * 3];
+      this.vertexData[i * 6 + 1] = data.vertices[i * 3 + 1];
+      this.vertexData[i * 6 + 2] = data.vertices[i * 3 + 2];
+      this.vertexData[i * 6 + 3] = normals[i * 3];
+      this.vertexData[i * 6 + 4] = normals[i * 3 + 1];
+      this.vertexData[i * 6 + 5] = normals[i * 3 + 2];
+    }
+    this.aabb = createAABBFromVertices(data.vertices);
     this.vbo = gl2.createBuffer();
     this.ibo = gl2.createBuffer();
     gl2.bindBuffer(gl2.ELEMENT_ARRAY_BUFFER, this.ibo);
     gl2.bufferData(gl2.ELEMENT_ARRAY_BUFFER, this.indices, gl2.STATIC_DRAW);
     gl2.bindBuffer(gl2.ARRAY_BUFFER, this.vbo);
-    gl2.bufferData(gl2.ARRAY_BUFFER, this.interleavedData, gl2.STATIC_DRAW);
+    gl2.bufferData(gl2.ARRAY_BUFFER, this.vertexData, gl2.STATIC_DRAW);
+  }
+  static createAABBWireframe(aabb, gl2) {
+    const wireframeData = createAABBWireframeData(aabb);
+    return new _Mesh(wireframeData, gl2, gl2.LINES);
   }
   bind(gl2) {
     gl2.bindBuffer(gl2.ARRAY_BUFFER, this.vbo);
@@ -437,8 +521,11 @@ var Mesh = class {
     }
   }
   draw(gl2) {
+    if (this.primitive === gl2.LINES) {
+      gl2.lineWidth(4);
+    }
     gl2.drawElements(
-      gl2.TRIANGLES,
+      this.primitive,
       this.indices.length,
       gl2.UNSIGNED_INT,
       0
@@ -488,10 +575,8 @@ var Scene = class {
 
 // src/graphics/shaderSrc.ts
 var SHADERS = {
-  fragment: "#version 300 es\r\n\r\nprecision mediump float;\r\nin vec3 v_normal;\r\nin vec3 v_world_pos;\r\nuniform vec3 u_camera_pos;\r\nuniform vec3 u_light_dir;\r\nuniform vec3 u_base_color;\r\nuniform samplerCube u_env_map;\r\nout vec4 fragColor;\r\n\r\nvoid main() {\r\n    vec3 n = normalize(v_normal);\r\n\r\n    vec3 l = normalize(u_light_dir);\r\n    float diff = max(dot(n, l), 0.0);\r\n    float ambient = 0.4;\r\n\r\n    vec3 view_dir = normalize(v_world_pos - u_camera_pos);\r\n    vec3 reflect_dir = reflect(view_dir, n);\r\n    vec3 env_color = texture(u_env_map, reflect_dir).rgb;\r\n\r\n    vec3 lighting = u_base_color * (ambient + diff);\r\n    vec3 final_color = mix(lighting, env_color*diff, 0.3); // 30% reflection, 70% diffuse\r\n\r\n    fragColor = vec4(final_color, 1.0);\r\n}",
-  skybox_fragment: "",
-  skybox_vertex: "",
-  vertex: "#version 300 es\r\n\r\nlayout(location = 0) in vec3 a_pos;\r\nlayout(location = 1) in vec3 a_normal;\r\nuniform mat4 u_model;\r\nuniform mat4 u_view;\r\nuniform mat4 u_projection;\r\nout vec3 v_normal;\r\nout vec3 v_world_pos;\r\n\r\nvoid main() {\r\n    v_world_pos = (u_model * vec4(a_pos, 1.0)).xyz;\r\n\r\n    v_normal = mat3(u_model) * a_normal;\r\n\r\n    gl_Position = u_projection * u_view * u_model * vec4(a_pos, 1.0);\r\n}"
+  fragment: "#version 300 es\n\nprecision mediump float;\nin vec3 v_normal;\nuniform vec3 u_light_dir;\nuniform vec3 u_base_color;\nout vec4 fragColor;\n\nvoid main() {\n    //basic lambertian diffuse + ambient\n    vec3 n = normalize(v_normal);\n\n    vec3 l = normalize(u_light_dir);\n    float diff = max(dot(n, l), 0.0);\n    float ambient = 0.4;\n    vec3 color = u_base_color * (ambient + diff);\n\n    fragColor = vec4(color, 1.0);\n\n    }",
+  vertex: "#version 300 es\n\nlayout(location = 0) in vec3 a_pos;\nlayout(location = 1) in vec3 a_normal;\n\n//MVP matrices\nuniform mat4 u_model;\nuniform mat4 u_view;\nuniform mat4 u_projection;\n\nout vec3 v_normal;\n\nvoid main() {\n\n    v_normal = mat3(u_model) * a_normal;\n\n    gl_Position = u_projection * u_view * u_model * vec4(a_pos, 1.0);\n}"
 };
 
 // src/graphics/shader.ts
@@ -1020,87 +1105,25 @@ Assets.registerModel("triangle", TRIANGLE);
 Assets.registerModel("pyramid", PYRAMID);
 Assets.registerShader("default", new Shader(SHADERS.vertex, SHADERS.fragment));
 
-// src/graphics/image.ts
-async function loadImage(url) {
-  const img = new Image();
-  img.src = url;
-  await img.decode();
-  return img;
-}
-
-// src/graphics/cubemapData.ts
-var CUBEMAPS = {
-  skyBox: {
-    px: "./assets/cubemaps/skyBox/px.jpg",
-    nx: "./assets/cubemaps/skyBox/nx.jpg",
-    py: "./assets/cubemaps/skyBox/py.jpg",
-    ny: "./assets/cubemaps/skyBox/ny.jpg",
-    pz: "./assets/cubemaps/skyBox/pz.jpg",
-    nz: "./assets/cubemaps/skyBox/nz.jpg"
-  }
-};
-
-// src/graphics/cubemap.ts
-async function loadCubemapImages(entry) {
-  const images = await Promise.all([
-    loadImage(entry.px),
-    loadImage(entry.nx),
-    loadImage(entry.py),
-    loadImage(entry.ny),
-    loadImage(entry.pz),
-    loadImage(entry.nz)
-  ]);
-  return {
-    px: images[0],
-    nx: images[1],
-    py: images[2],
-    ny: images[3],
-    pz: images[4],
-    nz: images[5]
-  };
-}
-function createCubeTex(gl2, images) {
-  {
-    const texture = gl2.createTexture();
-    gl2.bindTexture(gl2.TEXTURE_CUBE_MAP, texture);
-    gl2.texImage2D(gl2.TEXTURE_CUBE_MAP_POSITIVE_X, 0, gl2.RGBA, gl2.RGBA, gl2.UNSIGNED_BYTE, images.px);
-    gl2.texImage2D(gl2.TEXTURE_CUBE_MAP_NEGATIVE_X, 0, gl2.RGBA, gl2.RGBA, gl2.UNSIGNED_BYTE, images.nx);
-    gl2.texImage2D(gl2.TEXTURE_CUBE_MAP_POSITIVE_Y, 0, gl2.RGBA, gl2.RGBA, gl2.UNSIGNED_BYTE, images.py);
-    gl2.texImage2D(gl2.TEXTURE_CUBE_MAP_NEGATIVE_Y, 0, gl2.RGBA, gl2.RGBA, gl2.UNSIGNED_BYTE, images.ny);
-    gl2.texImage2D(gl2.TEXTURE_CUBE_MAP_POSITIVE_Z, 0, gl2.RGBA, gl2.RGBA, gl2.UNSIGNED_BYTE, images.pz);
-    gl2.texImage2D(gl2.TEXTURE_CUBE_MAP_NEGATIVE_Z, 0, gl2.RGBA, gl2.RGBA, gl2.UNSIGNED_BYTE, images.nz);
-    gl2.texParameteri(gl2.TEXTURE_CUBE_MAP, gl2.TEXTURE_MIN_FILTER, gl2.LINEAR);
-    gl2.texParameteri(gl2.TEXTURE_CUBE_MAP, gl2.TEXTURE_MAG_FILTER, gl2.LINEAR);
-    gl2.texParameteri(gl2.TEXTURE_CUBE_MAP, gl2.TEXTURE_WRAP_S, gl2.CLAMP_TO_EDGE);
-    gl2.texParameteri(gl2.TEXTURE_CUBE_MAP, gl2.TEXTURE_WRAP_T, gl2.CLAMP_TO_EDGE);
-    gl2.texParameteri(gl2.TEXTURE_CUBE_MAP, gl2.TEXTURE_WRAP_R, gl2.CLAMP_TO_EDGE);
-    return texture;
-  }
-}
-var CubeMapTextures = {};
-async function loadAllCubemaps() {
-  for (const key in CUBEMAPS) {
-    const entry = CUBEMAPS[key];
-    const images = await loadCubemapImages(entry);
-    CubeMapTextures[key] = createCubeTex(gl, images);
-  }
-  console.log(CubeMapTextures);
-}
-await loadAllCubemaps();
-
 // src/graphics/renderable.ts
 var Renderable = class {
   mesh;
   mat;
   transform;
+  debugAABBMesh = null;
+  debugAABBColor;
   model = allocMat4();
   temp = allocMat4();
   view = allocMat4();
   projection = allocMat4();
-  constructor(mesh, mat, transform) {
+  constructor(mesh, mat, transform, options) {
     this.mesh = mesh;
     this.mat = mat;
     this.transform = transform;
+    this.debugAABBColor = options?.debugAABBColor ?? mat.color;
+    if (options?.debugAABB) {
+      this.debugAABBMesh = Mesh.createAABBWireframe(this.mesh.aabb, gl);
+    }
   }
   updateModelMatrix() {
     identity(this.model);
@@ -1116,17 +1139,18 @@ var Renderable = class {
     this.mat.shader.setMat4("u_model", this.model);
     this.mat.shader.setMat4("u_view", this.view);
     this.mat.shader.setMat4("u_projection", this.projection);
-    this.mat.shader.setVec3("u_camera_pos", cam.position);
     const lightDir = allocVec3(1, 1, -1);
     const baseColor = allocVec3(this.mat.color.r, this.mat.color.g, this.mat.color.b);
     this.mat.shader.setVec3("u_light_dir", lightDir);
     this.mat.shader.setVec3("u_base_color", baseColor);
-    const cubemap = CubeMapTextures["skyBox"];
-    gl.activeTexture(gl.TEXTURE0);
-    gl.bindTexture(gl.TEXTURE_CUBE_MAP, cubemap);
-    this.mat.shader.setInt("u_env_map", 0);
     this.mesh.bind(gl);
     this.mesh.draw(gl);
+    if (this.debugAABBMesh) {
+      const debugColor = allocVec3(this.debugAABBColor.r, this.debugAABBColor.g, this.debugAABBColor.b);
+      this.mat.shader.setVec3("u_base_color", debugColor);
+      this.debugAABBMesh.bind(gl);
+      this.debugAABBMesh.draw(gl);
+    }
   }
 };
 
@@ -1209,7 +1233,7 @@ var COLORS = {
   WHITE
 };
 
-// src/graphics/clock.ts
+// src/core/clock.ts
 var FixedStepClock = class {
   fixedDT;
   accumulator = 0;
@@ -1351,14 +1375,11 @@ var bunnymat = {
   color: COLORS.RED
 };
 var bunnyMesh = new Mesh(Assets.getModel("bunny"), gl);
-var bunnyRenderable = new Renderable(bunnyMesh, bunnymat, transformBunny);
+var bunnyRenderable = new Renderable(bunnyMesh, bunnymat, transformBunny, {
+  debugAABB: true,
+  debugAABBColor: COLORS.GREEN
+});
 scene.add(bunnyRenderable);
-var transformCube = new Transform();
-transformCube.setTranslation(-1.5, 0, 0);
-transformCube.setScale(0.8, 0.8, 0.8);
-var cubeMesh = new Mesh(Assets.getModel("cube"), gl);
-var cubeRenderable = new Renderable(cubeMesh, bunnymat, transformCube);
-scene.add(cubeRenderable);
 function fixedUpdate(deltaTime) {
   input.update();
   scene.camera.processInput(input, deltaTime);

@@ -7,7 +7,7 @@ import {Assets} from "@/src/assetManager";
 import {Material, Renderable} from "@/src/graphics/renderable";
 import {Transform} from "@/src/graphics/transform";
 import {COLORS} from "@/src/graphics/color";
-import {FixedStepClock} from "@/src/graphics/clock";
+import {FixedStepClock} from "@/src/core/clock";
 import {InputManager} from "@/src/inputSystem/inputManager";
 
 // Scene setup
@@ -16,7 +16,6 @@ const renderer = new Renderer();
 const clock = new FixedStepClock(1 / 120);
 const input = new InputManager();
 
-// Bunny (center)
 const transformBunny: Transform = new Transform();
 transformBunny.setTranslation(0, 0, 0);
 transformBunny.setScale(1.5, 1.5, 1.5);
@@ -27,24 +26,16 @@ const bunnymat: Material = {
 }
 
 const bunnyMesh = new Mesh(Assets.getModel("bunny"), gl);
-const bunnyRenderable = new Renderable(bunnyMesh, bunnymat, transformBunny);
+const bunnyRenderable = new Renderable(bunnyMesh, bunnymat, transformBunny, {
+    debugAABB: true,
+    debugAABBColor: COLORS.GREEN,
+});
 scene.add(bunnyRenderable);
-
-// Cube (left)
-const transformCube: Transform = new Transform();
-transformCube.setTranslation(-1.5, 0, 0);
-transformCube.setScale(0.8, 0.8, 0.8);
-
-
-const cubeMesh = new Mesh(Assets.getModel("cube"), gl);
-const cubeRenderable = new Renderable(cubeMesh, bunnymat, transformCube);
-scene.add(cubeRenderable);
 
 
 function fixedUpdate(deltaTime: number): void {
     input.update();
     scene.camera.processInput(input, deltaTime);
-
 }
 
 function gameloop(): void {
