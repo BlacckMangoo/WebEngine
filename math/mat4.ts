@@ -30,25 +30,29 @@ export function identity(out: Mat4): Mat4 {
 
 // right up and forward must be unit vectors , they must be orthonormal to each other. eye is the position of the camera in world space.
 
-export function lookAt(out :Mat4, up : Vec3, forward : Vec3, eye: Vec3): Mat4 {
+export function lookAt(out: Mat4, eye: Vec3, center: Vec3, up: Vec3): Mat4 {
+    const z = allocVec3(
+        eye[0] - center[0],
+        eye[1] - center[1],
+        eye[2] - center[2]
+    );
+    normalize(z, z);
 
-    normalize(forward,forward);
-    const right : Vec3 = allocVec3();
-    cross(right, forward, up);
-    normalize(right, right);
+    const x = allocVec3();
+    cross(x, up, z);
+    normalize(x, x);
 
-    const a00 = right[0], a01 = right[1], a02 = right[2];
-    const a10 = up[0], a11 = up[1], a12 = up[2];
-    const a20 = -forward[0], a21 = -forward[1], a22 = -forward[2];
+    const y = allocVec3();
+    cross(y, z, x);
 
-    const tx = -(a00 * eye[0] + a01 * eye[1] + a02 * eye[2]);
-    const ty = -(a10 * eye[0] + a11 * eye[1] + a12 * eye[2]);
-    const tz = -(a20 * eye[0] + a21 * eye[1] + a22 * eye[2]);
+    out[0] = x[0]; out[1] = y[0]; out[2] = z[0]; out[3] = 0;
+    out[4] = x[1]; out[5] = y[1]; out[6] = z[1]; out[7] = 0;
+    out[8] = x[2]; out[9] = y[2]; out[10] = z[2]; out[11] = 0;
+    out[12] = -(x[0] * eye[0] + x[1] * eye[1] + x[2] * eye[2]);
+    out[13] = -(y[0] * eye[0] + y[1] * eye[1] + y[2] * eye[2]);
+    out[14] = -(z[0] * eye[0] + z[1] * eye[1] + z[2] * eye[2]);
+    out[15] = 1;
 
-    out[0] = a00; out[1] = a10; out[2] = a20; out[3] = 0;
-    out[4] = a01; out[5] = a11; out[6] = a21; out[7] = 0;
-    out[8] = a02; out[9] = a12; out[10] = a22; out[11] = 0;
-    out[12] = tx; out[13] = ty; out[14] = tz; out[15] = 1;
     return out;
 }
 

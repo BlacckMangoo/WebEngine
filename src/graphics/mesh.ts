@@ -1,6 +1,6 @@
 
 import {gl} from "@/src/graphics/context";
-import { AABB } from "../core/aabb";
+import { AABB } from "@/src/physics/aabb";
 import { allocVec3 } from "@/math/vec3";
 
 type MeshPrimitive = GLenum;

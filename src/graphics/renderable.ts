@@ -8,50 +8,40 @@ import {gl} from "@/src/graphics/context";
 import Camera from "@/src/graphics/camera";
 
 
+
 export interface Material {
     shader: Shader;
     color : Color ;
 }
 
-
 export class Renderable {
     mesh: Mesh;
     mat : Material ;
     transform: Transform;
-    debugAABBMesh: Mesh | null = null;
-    debugAABBColor: Color;
-
 
     private model = allocMat4();
     private temp = allocMat4();
     private view = allocMat4();
     private projection = allocMat4();
-
+    private rotationAxis = allocVec3(0, 1, 0);
 
     constructor(
         mesh: Mesh,
         mat : Material,
         transform: Transform,
-        options?: { debugAABB?: boolean; debugAABBColor?: Color }
     ) {
         this.mesh = mesh;
         this.mat  = mat;
         this.transform = transform;
-        this.debugAABBColor = options?.debugAABBColor ?? mat.color;
-
-        if (options?.debugAABB) {
-            this.debugAABBMesh = Mesh.createAABBWireframe(this.mesh.aabb, gl);
-        }
-       
-
-    }
+}
 
     private updateModelMatrix(): void {
         // Model: M = T * R * S
         identity(this.model);
-        scale(this.model, this.model, this.transform.scaling);
-        rotate(this.temp, this.model, this.transform.rotAngle, this.transform.rotAxis);
-        translate(this.model, this.temp, this.transform.translation);
+        translate(this.model, this.model, this.transform.translation);
+        const rotationAngle = this.transform.getRotationAxisAngle(this.rotationAxis);
+        rotate(this.temp, this.model, rotationAngle, this.rotationAxis);
+        scale(this.model, this.temp, this.transform.scaling);
     }
 
     draw(cam : Camera) : void {
@@ -76,14 +66,8 @@ export class Renderable {
         this.mesh.bind(gl);
         this.mesh.draw(gl);
 
-        if (this.debugAABBMesh) {
-            const debugColor = allocVec3(this.debugAABBColor.r, this.debugAABBColor.g, this.debugAABBColor.b);
-            this.mat.shader.setVec3("u_base_color", debugColor);
-            this.debugAABBMesh.bind(gl);
-            this.debugAABBMesh.draw(gl);
-        }
-
-
-    }
 }
+}
+
+  
 
