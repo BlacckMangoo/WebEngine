@@ -1517,26 +1517,20 @@ var InputManager = class {
   }
 };
 
-// src/physics/physics.ts
-var gravity = allocVec3(0, -0.81, 0);
-function hasColliderAABB(entity) {
-  return Boolean(entity.physicsCollider?.aabb);
-}
-function isDynamicBody(entity) {
-  return Boolean(entity.rigidbody && entity.rigidbody.type === "Dynamic" /* Dynamic */);
-}
-function getInvMass(entity) {
-  if (!isDynamicBody(entity) || entity.rigidbody.mass <= 0) {
-    return 0;
+// src/physics/manifold.ts
+var CollisionManifold = class {
+  entityA;
+  entityB;
+  normal;
+  penetration;
+  contactPoints = [];
+  constructor(entityA, entityB, normal, penetration) {
+    this.entityA = entityA;
+    this.entityB = entityB;
+    this.normal = normal;
+    this.penetration = penetration;
   }
-  return 1 / entity.rigidbody.mass;
-}
-function getRestitution(entity) {
-  if (!entity.rigidbody) {
-    return 0;
-  }
-  return Math.max(0, Math.min(1, entity.rigidbody.restitution));
-}
+};
 function getAABBCenter(aabb) {
   return allocVec3(
     (aabb.min[0] + aabb.max[0]) * 0.5,
@@ -1544,7 +1538,7 @@ function getAABBCenter(aabb) {
     (aabb.min[2] + aabb.max[2]) * 0.5
   );
 }
-function getCollisionNormalAndPenetration(a, b) {
+function getCollisionAxis(a, b) {
   const overlapX = Math.min(a.max[0], b.max[0]) - Math.max(a.min[0], b.min[0]);
   const overlapY = Math.min(a.max[1], b.max[1]) - Math.max(a.min[1], b.min[1]);
   const overlapZ = Math.min(a.max[2], b.max[2]) - Math.max(a.min[2], b.min[2]);
@@ -1568,6 +1562,62 @@ function getCollisionNormalAndPenetration(a, b) {
   if (normal[2] !== 0 && centerB[2] < centerA[2]) normal[2] = -1;
   return { normal, penetration };
 }
+function buildContactPoint(a, b, normal, penetration) {
+  const centerA = getAABBCenter(a);
+  const centerB = getAABBCenter(b);
+  const posA = allocVec3(
+    centerA[0] + normal[0] * 0.5 * penetration,
+    centerA[1] + normal[1] * 0.5 * penetration,
+    centerA[2] + normal[2] * 0.5 * penetration
+  );
+  const posB = allocVec3(
+    centerB[0] - normal[0] * 0.5 * penetration,
+    centerB[1] - normal[1] * 0.5 * penetration,
+    centerB[2] - normal[2] * 0.5 * penetration
+  );
+  return {
+    posA,
+    posB,
+    normal: allocVec3(normal[0], normal[1], normal[2]),
+    penetration
+  };
+}
+function createAABBManifold(entityA, entityB, worldAABB, worldBABB) {
+  if (!worldAABB.intersects(worldBABB)) {
+    return null;
+  }
+  const axis = getCollisionAxis(worldAABB, worldBABB);
+  if (!axis) {
+    return null;
+  }
+  const manifold = new CollisionManifold(entityA, entityB, axis.normal, axis.penetration);
+  manifold.contactPoints.push(buildContactPoint(worldAABB, worldBABB, axis.normal, axis.penetration));
+  return manifold;
+}
+
+// src/physics/physics.ts
+var gravity = allocVec3(0, -0.81, 0);
+var POSITIONAL_SLOP = 1e-3;
+var POSITIONAL_PERCENT = 0.8;
+var SOLVER_ITERATIONS = 6;
+function hasColliderAABB(entity) {
+  return Boolean(entity.physicsCollider?.aabb);
+}
+function isDynamicBody(entity) {
+  return Boolean(entity.rigidbody && entity.rigidbody.type === "Dynamic" /* Dynamic */);
+}
+function getInvMass(entity) {
+  if (!isDynamicBody(entity) || entity.rigidbody.mass <= 0) {
+    return 0;
+  }
+  return 1 / entity.rigidbody.mass;
+}
+function getRestitution(entity) {
+  if (!entity.rigidbody) {
+    return 0;
+  }
+  return Math.max(0, Math.min(1, entity.rigidbody.restitution));
+}
 function applyPositionalCorrection(entityA, entityB, normal, penetration) {
   const invMassA = getInvMass(entityA);
   const invMassB = getInvMass(entityB);
@@ -1575,9 +1625,7 @@ function applyPositionalCorrection(entityA, entityB, normal, penetration) {
   if (invMassSum <= 0) {
     return;
   }
-  const slop = 1e-3;
-  const percent = 0.8;
-  const correctionMag = Math.max(penetration - slop, 0) * percent / invMassSum;
+  const correctionMag = Math.max(penetration - POSITIONAL_SLOP, 0) * POSITIONAL_PERCENT / invMassSum;
   if (invMassA > 0) {
     entityA.transform.position[0] -= normal[0] * correctionMag * invMassA;
     entityA.transform.position[1] -= normal[1] * correctionMag * invMassA;
@@ -1589,7 +1637,8 @@ function applyPositionalCorrection(entityA, entityB, normal, penetration) {
     entityB.transform.position[2] += normal[2] * correctionMag * invMassB;
   }
 }
-function applyImpulse(entityA, entityB, normal) {
+function applyContactImpulse(entityA, entityB, contact) {
+  const normal = contact.normal;
   const invMassA = getInvMass(entityA);
   const invMassB = getInvMass(entityB);
   const invMassSum = invMassA + invMassB;
@@ -1627,21 +1676,24 @@ function getWorldAABB(entity) {
   }
   return aabbFromLocalToWorld(entity.physicsCollider.aabb, entity.transform);
 }
-function resolveCollision(entityA, entityB) {
+function buildManifold(entityA, entityB) {
   const worldAABB = getWorldAABB(entityA);
   const worldBABB = getWorldAABB(entityB);
   if (!worldAABB || !worldBABB) {
+    return null;
+  }
+  return createAABBManifold(entityA, entityB, worldAABB, worldBABB);
+}
+function resolveManifold(manifold) {
+  if (manifold.contactPoints.length === 0) {
     return;
   }
-  if (!worldAABB.intersects(worldBABB)) {
+  const contact = manifold.contactPoints[0];
+  if (!contact) {
     return;
   }
-  const manifold = getCollisionNormalAndPenetration(worldAABB, worldBABB);
-  if (!manifold) {
-    return;
-  }
-  applyPositionalCorrection(entityA, entityB, manifold.normal, manifold.penetration);
-  applyImpulse(entityA, entityB, manifold.normal);
+  applyPositionalCorrection(manifold.entityA, manifold.entityB, manifold.normal, manifold.penetration);
+  applyContactImpulse(manifold.entityA, manifold.entityB, contact);
 }
 function integrate(entity, deltaTime) {
   if (!isDynamicBody(entity)) {
@@ -1657,11 +1709,20 @@ function simulatePhysics(entities, deltaTime) {
   for (const entity of entities) {
     integrate(entity, deltaTime);
   }
+  const manifolds = [];
   for (let i = 0; i < entities.length; i++) {
     for (let j = i + 1; j < entities.length; j++) {
       const entityA = entities[i];
       const entityB = entities[j];
-      resolveCollision(entityA, entityB);
+      const manifold = buildManifold(entityA, entityB);
+      if (manifold) {
+        manifolds.push(manifold);
+      }
+    }
+  }
+  for (let iteration = 0; iteration < SOLVER_ITERATIONS; iteration++) {
+    for (const manifold of manifolds) {
+      resolveManifold(manifold);
     }
   }
 }
@@ -1671,53 +1732,130 @@ var scene = new Scene(new camera_default(canvas.width / canvas.height, 0.1, 100,
 var renderer = new Renderer();
 var clock = new FixedStepClock(1 / 120);
 var input = new InputManager();
-var buunyrb = {
-  type: "Dynamic" /* Dynamic */,
-  mass: 1,
-  restitution: 0.25,
-  velocity: allocVec3(0, 0, 0),
-  acceleration: allocVec3(0, 0, 0)
+scene.camera.transform.setTranslation(0, 2.5, 9);
+var defaultShader = Assets.getShader("default");
+var mats = {
+  ground: { shader: defaultShader, color: COLORS.GREEN },
+  wall: { shader: defaultShader, color: COLORS.BLUE },
+  bunny: { shader: defaultShader, color: COLORS.YELLOW },
+  horse: { shader: defaultShader, color: COLORS.MAGENTA },
+  cubeA: { shader: defaultShader, color: COLORS.CYAN },
+  cubeB: { shader: defaultShader, color: COLORS.RED }
 };
-var groudnrb = {
-  type: "Static" /* Static */,
-  mass: 0,
-  // immovable object
-  restitution: 0.25,
-  velocity: allocVec3(0, 0, 0),
-  acceleration: allocVec3(0, 0, 0)
-};
-var transformBunny = new Transform();
-transformBunny.setTranslation(0, 0, 0);
-transformBunny.setScale(1.5, 1.5, 1.5);
-var bunnymat = {
-  shader: Assets.getShader("default"),
-  color: COLORS.YELLOW
-};
-var bunnyMesh = new Mesh(Assets.getModel("bunny"), gl);
-var bunnyRenderable = new Renderable(bunnyMesh, bunnymat, transformBunny);
-var bunnyEntity = {
-  transform: transformBunny,
-  renderable: bunnyRenderable,
-  physicsCollider: {
-    aabb: bunnyMesh.aabb,
-    showDebug: true
-  },
-  rigidbody: buunyrb
-};
-scene.add(bunnyEntity);
-var groundPlane = new Mesh(Assets.getModel("cube"), gl);
-var groundTransform = new Transform().setScale(1, 0.1, 1).setTranslation(0, -1, 0);
-var groundRenderable = new Renderable(groundPlane, bunnymat, groundTransform);
-var groundEntity = {
-  transform: groundTransform,
-  renderable: groundRenderable,
-  physicsCollider: {
-    aabb: groundPlane.aabb,
-    showDebug: false
-  },
-  rigidbody: groudnrb
-};
-scene.add(groundEntity);
+function makeRigidbody(type, mass, restitution, velocityX = 0, velocityY = 0, velocityZ = 0) {
+  return {
+    type,
+    mass,
+    restitution,
+    velocity: allocVec3(velocityX, velocityY, velocityZ),
+    acceleration: allocVec3(0, 0, 0)
+  };
+}
+function createEntity(modelName, material, tx, ty, tz, sx, sy, sz, rigidbody, showDebug) {
+  const mesh = new Mesh(Assets.getModel(modelName), gl);
+  const transform = new Transform().setTranslation(tx, ty, tz).setScale(sx, sy, sz);
+  const renderable = new Renderable(mesh, material, transform);
+  return {
+    transform,
+    renderable,
+    physicsCollider: {
+      aabb: mesh.aabb,
+      showDebug
+    },
+    rigidbody
+  };
+}
+var ground = createEntity(
+  "cube",
+  mats.ground,
+  0,
+  -2.2,
+  0,
+  10,
+  0.3,
+  10,
+  makeRigidbody("Static" /* Static */, 1, 0.2),
+  false
+);
+var leftWall = createEntity(
+  "cube",
+  mats.wall,
+  -4.5,
+  -0.3,
+  0,
+  0.35,
+  2.5,
+  10,
+  makeRigidbody("Static" /* Static */, 1, 0.2),
+  false
+);
+var rightWall = createEntity(
+  "cube",
+  mats.wall,
+  4.5,
+  -0.3,
+  0,
+  0.35,
+  2.5,
+  10,
+  makeRigidbody("Static" /* Static */, 1, 0.2),
+  false
+);
+var bunny = createEntity(
+  "bunny",
+  mats.bunny,
+  -2,
+  1.8,
+  0,
+  7.1,
+  7.1,
+  7.1,
+  makeRigidbody("Dynamic" /* Dynamic */, 2, 0.35, 1.1, 0, 0),
+  true
+);
+var horse = createEntity(
+  "horse",
+  mats.horse,
+  2,
+  2.2,
+  0,
+  5.9,
+  5.9,
+  5.9,
+  makeRigidbody("Dynamic" /* Dynamic */, 3, 0.2, -0.9, 0, 0),
+  true
+);
+var cubeTop = createEntity(
+  "cube",
+  mats.cubeA,
+  0,
+  2.8,
+  0,
+  0.55,
+  0.55,
+  0.55,
+  makeRigidbody("Dynamic" /* Dynamic */, 1, 0.6, 0.2, 0, 0),
+  true
+);
+var cubeBottom = createEntity(
+  "cube",
+  mats.cubeB,
+  0.2,
+  1.4,
+  0,
+  0.75,
+  0.75,
+  0.75,
+  makeRigidbody("Dynamic" /* Dynamic */, 1.6, 0.1, -0.1, 0, 0),
+  true
+);
+scene.add(ground);
+scene.add(leftWall);
+scene.add(rightWall);
+scene.add(bunny);
+scene.add(horse);
+scene.add(cubeTop);
+scene.add(cubeBottom);
 function fixedUpdate(deltaTime) {
   input.update();
   scene.camera.processInput(input, deltaTime);

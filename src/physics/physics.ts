@@ -1,11 +1,15 @@
 import { Vec3,allocVec3, scaleAndAdd } from "@/math/vec3";
 import { AABB ,aabbFromLocalToWorld} from "./aabb";
 import { Entity } from "../core/entity";
+import { CollisionManifold, ContactPoint, createAABBManifold } from "./manifold";
 
 
 
 // global physics properties
 const gravity = allocVec3(0, -0.81, 0); // gravity vector in negative y direction
+const POSITIONAL_SLOP = 0.001;
+const POSITIONAL_PERCENT = 0.8;
+const SOLVER_ITERATIONS = 6;
 
 
 export interface Rigidbody {
@@ -46,48 +50,7 @@ function getRestitution(entity: Entity): number {
     if (!entity.rigidbody) {
         return 0;
     }
-
     return Math.max(0, Math.min(1, entity.rigidbody.restitution));
-}
-
-function getAABBCenter(aabb: AABB): Vec3 {
-    return allocVec3(
-        (aabb.min[0] + aabb.max[0]) * 0.5,
-        (aabb.min[1] + aabb.max[1]) * 0.5,
-        (aabb.min[2] + aabb.max[2]) * 0.5
-    );
-}
-
-function getCollisionNormalAndPenetration(a: AABB, b: AABB): { normal: Vec3; penetration: number } | null {
-    const overlapX = Math.min(a.max[0], b.max[0]) - Math.max(a.min[0], b.min[0]);
-    const overlapY = Math.min(a.max[1], b.max[1]) - Math.max(a.min[1], b.min[1]);
-    const overlapZ = Math.min(a.max[2], b.max[2]) - Math.max(a.min[2], b.min[2]);
-
-    if (overlapX <= 0 || overlapY <= 0 || overlapZ <= 0) {
-        return null;
-    }
-
-    const centerA = getAABBCenter(a);
-    const centerB = getAABBCenter(b);
-
-    let normal = allocVec3(1, 0, 0);
-    let penetration = overlapX;
-
-    if (overlapY < penetration) {
-        normal = allocVec3(0, 1, 0);
-        penetration = overlapY;
-    }
-
-    if (overlapZ < penetration) {
-        normal = allocVec3(0, 0, 1);
-        penetration = overlapZ;
-    }
-
-    if (normal[0] !== 0 && centerB[0] < centerA[0]) normal[0] = -1;
-    if (normal[1] !== 0 && centerB[1] < centerA[1]) normal[1] = -1;
-    if (normal[2] !== 0 && centerB[2] < centerA[2]) normal[2] = -1;
-
-    return { normal, penetration };
 }
 
 function applyPositionalCorrection(entityA: Entity, entityB: Entity, normal: Vec3, penetration: number): void {
@@ -99,9 +62,7 @@ function applyPositionalCorrection(entityA: Entity, entityB: Entity, normal: Vec
         return;
     }
 
-    const slop = 0.001;
-    const percent = 0.8;
-    const correctionMag = Math.max(penetration - slop, 0) * percent / invMassSum;
+    const correctionMag = Math.max(penetration - POSITIONAL_SLOP, 0) * POSITIONAL_PERCENT / invMassSum;
 
     if (invMassA > 0) {
         entityA.transform.position[0] -= normal[0] * correctionMag * invMassA;
@@ -116,7 +77,8 @@ function applyPositionalCorrection(entityA: Entity, entityB: Entity, normal: Vec
     }
 }
 
-function applyImpulse(entityA: Entity, entityB: Entity, normal: Vec3): void {
+function applyContactImpulse(entityA: Entity, entityB: Entity, contact: ContactPoint): void {
+    const normal = contact.normal;
     const invMassA = getInvMass(entityA);
     const invMassB = getInvMass(entityB);
     const invMassSum = invMassA + invMassB;
@@ -167,30 +129,29 @@ function getWorldAABB(entity: Entity): AABB | null {
     return aabbFromLocalToWorld(entity.physicsCollider.aabb, entity.transform);
 }
 
-
-
-
-
-
-function resolveCollision(entityA: Entity, entityB: Entity): void {
+function buildManifold(entityA: Entity, entityB: Entity): CollisionManifold | null {
     const worldAABB = getWorldAABB(entityA);
     const worldBABB = getWorldAABB(entityB);
 
     if (!worldAABB || !worldBABB) {
+        return null;
+    }
+
+    return createAABBManifold(entityA, entityB, worldAABB, worldBABB);
+}
+
+function resolveManifold(manifold: CollisionManifold): void {
+    if (manifold.contactPoints.length === 0) {
         return;
     }
 
-    if (!worldAABB.intersects(worldBABB)) {
+    const contact = manifold.contactPoints[0];
+    if (!contact) {
         return;
     }
 
-    const manifold = getCollisionNormalAndPenetration(worldAABB, worldBABB);
-    if (!manifold) {
-        return;
-    }
-
-    applyPositionalCorrection(entityA, entityB, manifold.normal, manifold.penetration);
-    applyImpulse(entityA, entityB, manifold.normal);
+    applyPositionalCorrection(manifold.entityA, manifold.entityB, manifold.normal, manifold.penetration);
+    applyContactImpulse(manifold.entityA, manifold.entityB, contact);
 }
 
 
@@ -219,14 +180,24 @@ export function simulatePhysics( entities : Entity[] , deltaTime : number ) {
         integrate(entity, deltaTime);
     }
 
+    const manifolds: CollisionManifold[] = [];
+
     for( let i =0; i<entities.length; i++) {
         for( let j = i+1; j<entities.length; j++) {
             const entityA = entities[i];
             const entityB = entities[j];
-           
-          resolveCollision(entityA, entityB);
-        
+
+            const manifold = buildManifold(entityA, entityB);
+            if (manifold) {
+                manifolds.push(manifold);
+            }
+        }
     }
-}
+
+    for (let iteration = 0; iteration < SOLVER_ITERATIONS; iteration++) {
+        for (const manifold of manifolds) {
+            resolveManifold(manifold);
+        }
+    }
 
 }
