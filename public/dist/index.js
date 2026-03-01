@@ -378,9 +378,10 @@ function composeQuaternion(out, lhs, rhs) {
 
 // src/graphics/transform.ts
 var Transform = class {
-  translation = allocVec3(0, 0, 0);
+  position = allocVec3(0, 0, 0);
   scaling = allocVec3(1, 1, 1);
   rotation = allocQuaternion(0, 0, 0, 1);
+  // (x, y, z) imaginary part, w scalar part -> rotation axis is (x, y, z) and angle is 2 * acos(w)
   revision = 0;
   get version() {
     return this.revision;
@@ -389,16 +390,16 @@ var Transform = class {
     this.revision++;
   }
   setTranslation(x, y, z) {
-    this.translation[0] = x;
-    this.translation[1] = y;
-    this.translation[2] = z;
+    this.position[0] = x;
+    this.position[1] = y;
+    this.position[2] = z;
     this.markChanged();
     return this;
   }
   translateBy(dx, dy, dz) {
-    this.translation[0] += dx;
-    this.translation[1] += dy;
-    this.translation[2] += dz;
+    this.position[0] += dx;
+    this.position[1] += dy;
+    this.position[2] += dz;
     this.markChanged();
     return this;
   }
@@ -473,8 +474,8 @@ var Camera = class {
   }
   getViewMatrix(view) {
     this.deriveBasisVectors();
-    scaleAndAdd(this.viewTarget, this.transform.translation, this.forward, 1);
-    return lookAt(view, this.transform.translation, this.viewTarget, this.up);
+    scaleAndAdd(this.viewTarget, this.transform.position, this.forward, 1);
+    return lookAt(view, this.transform.position, this.viewTarget, this.up);
   }
   getProjectionMatrix(projection) {
     return perspective(projection, this.fovy, this.aspect, this.near, this.far);
@@ -486,22 +487,22 @@ var Camera = class {
     const speed = this.moveSpeed * deltaTime;
     this.deriveBasisVectors();
     if (input2.isKeyPressed(KeyCode.W)) {
-      scaleAndAdd(this.transform.translation, this.transform.translation, this.forward, speed);
+      scaleAndAdd(this.transform.position, this.transform.position, this.forward, speed);
     }
     if (input2.isKeyPressed(KeyCode.S)) {
-      scaleAndAdd(this.transform.translation, this.transform.translation, this.forward, -speed);
+      scaleAndAdd(this.transform.position, this.transform.position, this.forward, -speed);
     }
     if (input2.isKeyPressed(KeyCode.A)) {
-      scaleAndAdd(this.transform.translation, this.transform.translation, this.right, -speed);
+      scaleAndAdd(this.transform.position, this.transform.position, this.right, -speed);
     }
     if (input2.isKeyPressed(KeyCode.D)) {
-      scaleAndAdd(this.transform.translation, this.transform.translation, this.right, speed);
+      scaleAndAdd(this.transform.position, this.transform.position, this.right, speed);
     }
     if (input2.isKeyPressed(KeyCode.ArrowUp)) {
-      translateY(this.transform.translation, speed);
+      translateY(this.transform.position, speed);
     }
     if (input2.isKeyPressed(KeyCode.ArrowDown)) {
-      translateY(this.transform.translation, -speed);
+      translateY(this.transform.position, -speed);
     }
     const rotSpeed = 1.5 * deltaTime;
     if (input2.isKeyPressed(KeyCode.ArrowLeft)) {
@@ -535,6 +536,37 @@ var AABB = class {
     return this.min[0] <= other.max[0] && this.max[0] >= other.min[0] && (this.min[1] <= other.max[1] && this.max[1] >= other.min[1]) && (this.min[2] <= other.max[2] && this.max[2] >= other.min[2]);
   }
 };
+function aabbFromLocalToWorld(localAABB, transform) {
+  const corner1 = allocVec3(localAABB.min[0], localAABB.min[1], localAABB.min[2]);
+  const corner2 = allocVec3(localAABB.max[0], localAABB.min[1], localAABB.min[2]);
+  const corner3 = allocVec3(localAABB.min[0], localAABB.max[1], localAABB.min[2]);
+  const corner4 = allocVec3(localAABB.min[0], localAABB.min[1], localAABB.max[2]);
+  const corner5 = allocVec3(localAABB.max[0], localAABB.max[1], localAABB.min[2]);
+  const corner6 = allocVec3(localAABB.max[0], localAABB.min[1], localAABB.max[2]);
+  const corner7 = allocVec3(localAABB.min[0], localAABB.max[1], localAABB.max[2]);
+  const corner8 = allocVec3(localAABB.max[0], localAABB.max[1], localAABB.max[2]);
+  const localCorners = [corner1, corner2, corner3, corner4, corner5, corner6, corner7, corner8];
+  const worldMin = allocVec3(Number.POSITIVE_INFINITY, Number.POSITIVE_INFINITY, Number.POSITIVE_INFINITY);
+  const worldMax = allocVec3(Number.NEGATIVE_INFINITY, Number.NEGATIVE_INFINITY, Number.NEGATIVE_INFINITY);
+  for (const localCorner of localCorners) {
+    const scaledCorner = allocVec3(
+      localCorner[0] * transform.scaling[0],
+      localCorner[1] * transform.scaling[1],
+      localCorner[2] * transform.scaling[2]
+    );
+    const rotatedCorner = allocVec3();
+    transform.rotateVec3(rotatedCorner, scaledCorner);
+    const worldCorner = allocVec3();
+    scaleAndAdd(worldCorner, transform.position, rotatedCorner, 1);
+    worldMin[0] = Math.min(worldMin[0], worldCorner[0]);
+    worldMin[1] = Math.min(worldMin[1], worldCorner[1]);
+    worldMin[2] = Math.min(worldMin[2], worldCorner[2]);
+    worldMax[0] = Math.max(worldMax[0], worldCorner[0]);
+    worldMax[1] = Math.max(worldMax[1], worldCorner[1]);
+    worldMax[2] = Math.max(worldMax[2], worldCorner[2]);
+  }
+  return new AABB(worldMin, worldMax);
+}
 
 // src/graphics/mesh.ts
 var VertexLayout = class {
@@ -713,8 +745,10 @@ var Renderer = class {
     this.init();
     gl.viewport(0, 0, canvas.width, canvas.height);
     gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
-    for (const renderable of scene2.renderables) {
-      renderable.draw(scene2.camera);
+    for (const entity of scene2.entities) {
+      if (entity.renderable) {
+        entity.renderable.draw(scene2.camera);
+      }
     }
   }
 };
@@ -722,21 +756,12 @@ var Renderer = class {
 // src/graphics/scene.ts
 var Scene = class {
   camera;
-  renderables = [];
+  entities = [];
   constructor(camera) {
     this.camera = camera;
   }
-  add(renderable) {
-    this.renderables.push(renderable);
-  }
-  remove(renderable) {
-    const index = this.renderables.indexOf(renderable);
-    if (index !== -1) {
-      this.renderables.splice(index, 1);
-    }
-  }
-  clear() {
-    this.renderables = [];
+  add(entity) {
+    this.entities.push(entity);
   }
 };
 
@@ -1289,7 +1314,7 @@ var Renderable = class {
   }
   updateModelMatrix() {
     identity(this.model);
-    translate(this.model, this.model, this.transform.translation);
+    translate(this.model, this.model, this.transform.position);
     const rotationAngle = this.transform.getRotationAxisAngle(this.rotationAxis);
     rotate(this.temp, this.model, rotationAngle, this.rotationAxis);
     scale(this.model, this.temp, this.transform.scaling);
@@ -1493,190 +1518,150 @@ var InputManager = class {
 };
 
 // src/physics/physics.ts
-var PhysicsCollider = class {
-  localAABB;
-  worldAABB;
-  lastTransformVersion = -1;
-  corner = allocVec3();
-  constructor(localAABB) {
-    this.localAABB = localAABB;
-    this.worldAABB = new AABB(allocVec3(), allocVec3());
-  }
-  updateWorldAABB(transform) {
-    if (this.lastTransformVersion === transform.version) return;
-    const minX = this.localAABB.min[0];
-    const minY = this.localAABB.min[1];
-    const minZ = this.localAABB.min[2];
-    const maxX = this.localAABB.max[0];
-    const maxY = this.localAABB.max[1];
-    const maxZ = this.localAABB.max[2];
-    let worldMinX = Number.POSITIVE_INFINITY;
-    let worldMinY = Number.POSITIVE_INFINITY;
-    let worldMinZ = Number.POSITIVE_INFINITY;
-    let worldMaxX = Number.NEGATIVE_INFINITY;
-    let worldMaxY = Number.NEGATIVE_INFINITY;
-    let worldMaxZ = Number.NEGATIVE_INFINITY;
-    transformAABBCornerToWorld(this.corner, transform, minX, minY, minZ);
-    if (this.corner[0] < worldMinX) worldMinX = this.corner[0];
-    if (this.corner[1] < worldMinY) worldMinY = this.corner[1];
-    if (this.corner[2] < worldMinZ) worldMinZ = this.corner[2];
-    if (this.corner[0] > worldMaxX) worldMaxX = this.corner[0];
-    if (this.corner[1] > worldMaxY) worldMaxY = this.corner[1];
-    if (this.corner[2] > worldMaxZ) worldMaxZ = this.corner[2];
-    transformAABBCornerToWorld(this.corner, transform, maxX, minY, minZ);
-    if (this.corner[0] < worldMinX) worldMinX = this.corner[0];
-    if (this.corner[1] < worldMinY) worldMinY = this.corner[1];
-    if (this.corner[2] < worldMinZ) worldMinZ = this.corner[2];
-    if (this.corner[0] > worldMaxX) worldMaxX = this.corner[0];
-    if (this.corner[1] > worldMaxY) worldMaxY = this.corner[1];
-    if (this.corner[2] > worldMaxZ) worldMaxZ = this.corner[2];
-    transformAABBCornerToWorld(this.corner, transform, minX, maxY, minZ);
-    if (this.corner[0] < worldMinX) worldMinX = this.corner[0];
-    if (this.corner[1] < worldMinY) worldMinY = this.corner[1];
-    if (this.corner[2] < worldMinZ) worldMinZ = this.corner[2];
-    if (this.corner[0] > worldMaxX) worldMaxX = this.corner[0];
-    if (this.corner[1] > worldMaxY) worldMaxY = this.corner[1];
-    if (this.corner[2] > worldMaxZ) worldMaxZ = this.corner[2];
-    transformAABBCornerToWorld(this.corner, transform, maxX, maxY, minZ);
-    if (this.corner[0] < worldMinX) worldMinX = this.corner[0];
-    if (this.corner[1] < worldMinY) worldMinY = this.corner[1];
-    if (this.corner[2] < worldMinZ) worldMinZ = this.corner[2];
-    if (this.corner[0] > worldMaxX) worldMaxX = this.corner[0];
-    if (this.corner[1] > worldMaxY) worldMaxY = this.corner[1];
-    if (this.corner[2] > worldMaxZ) worldMaxZ = this.corner[2];
-    transformAABBCornerToWorld(this.corner, transform, minX, minY, maxZ);
-    if (this.corner[0] < worldMinX) worldMinX = this.corner[0];
-    if (this.corner[1] < worldMinY) worldMinY = this.corner[1];
-    if (this.corner[2] < worldMinZ) worldMinZ = this.corner[2];
-    if (this.corner[0] > worldMaxX) worldMaxX = this.corner[0];
-    if (this.corner[1] > worldMaxY) worldMaxY = this.corner[1];
-    if (this.corner[2] > worldMaxZ) worldMaxZ = this.corner[2];
-    transformAABBCornerToWorld(this.corner, transform, maxX, minY, maxZ);
-    if (this.corner[0] < worldMinX) worldMinX = this.corner[0];
-    if (this.corner[1] < worldMinY) worldMinY = this.corner[1];
-    if (this.corner[2] < worldMinZ) worldMinZ = this.corner[2];
-    if (this.corner[0] > worldMaxX) worldMaxX = this.corner[0];
-    if (this.corner[1] > worldMaxY) worldMaxY = this.corner[1];
-    if (this.corner[2] > worldMaxZ) worldMaxZ = this.corner[2];
-    transformAABBCornerToWorld(this.corner, transform, minX, maxY, maxZ);
-    if (this.corner[0] < worldMinX) worldMinX = this.corner[0];
-    if (this.corner[1] < worldMinY) worldMinY = this.corner[1];
-    if (this.corner[2] < worldMinZ) worldMinZ = this.corner[2];
-    if (this.corner[0] > worldMaxX) worldMaxX = this.corner[0];
-    if (this.corner[1] > worldMaxY) worldMaxY = this.corner[1];
-    if (this.corner[2] > worldMaxZ) worldMaxZ = this.corner[2];
-    transformAABBCornerToWorld(this.corner, transform, maxX, maxY, maxZ);
-    if (this.corner[0] < worldMinX) worldMinX = this.corner[0];
-    if (this.corner[1] < worldMinY) worldMinY = this.corner[1];
-    if (this.corner[2] < worldMinZ) worldMinZ = this.corner[2];
-    if (this.corner[0] > worldMaxX) worldMaxX = this.corner[0];
-    if (this.corner[1] > worldMaxY) worldMaxY = this.corner[1];
-    if (this.corner[2] > worldMaxZ) worldMaxZ = this.corner[2];
-    this.worldAABB.min[0] = worldMinX;
-    this.worldAABB.min[1] = worldMinY;
-    this.worldAABB.min[2] = worldMinZ;
-    this.worldAABB.max[0] = worldMaxX;
-    this.worldAABB.max[1] = worldMaxY;
-    this.worldAABB.max[2] = worldMaxZ;
-    this.lastTransformVersion = transform.version;
-  }
-};
-var PhysicsBody = class {
-  constructor(transform, collider, rigidbody) {
-    this.transform = transform;
-    this.collider = collider;
-    this.rigidbody = rigidbody;
-  }
-  integrate(deltaTime) {
-    this.rigidbody.velocity[0] += this.rigidbody.acceleration[0] * deltaTime;
-    this.rigidbody.velocity[1] += this.rigidbody.acceleration[1] * deltaTime;
-    this.rigidbody.velocity[2] += this.rigidbody.acceleration[2] * deltaTime;
-    this.transform.translateBy(
-      this.rigidbody.velocity[0] * deltaTime,
-      this.rigidbody.velocity[1] * deltaTime,
-      this.rigidbody.velocity[2] * deltaTime
-    );
-    this.collider.updateWorldAABB(this.transform);
-  }
-};
-function transformAABBCornerToWorld(out, transform, x, y, z) {
-  out[0] = x * transform.scaling[0];
-  out[1] = y * transform.scaling[1];
-  out[2] = z * transform.scaling[2];
-  transform.rotateVec3(out, out);
-  out[0] += transform.translation[0];
-  out[1] += transform.translation[1];
-  out[2] += transform.translation[2];
+var gravity = allocVec3(0, -0.81, 0);
+function hasColliderAABB(entity) {
+  return Boolean(entity.physicsCollider?.aabb);
 }
-function resolveBodyCollision(a, b, restitution = 1) {
-  a.collider.updateWorldAABB(a.transform);
-  b.collider.updateWorldAABB(b.transform);
-  const aabbA = a.collider.worldAABB;
-  const aabbB = b.collider.worldAABB;
-  if (!aabbA.intersects(aabbB)) return false;
-  const overlapX = Math.min(aabbA.max[0], aabbB.max[0]) - Math.max(aabbA.min[0], aabbB.min[0]);
-  const overlapY = Math.min(aabbA.max[1], aabbB.max[1]) - Math.max(aabbA.min[1], aabbB.min[1]);
-  const overlapZ = Math.min(aabbA.max[2], aabbB.max[2]) - Math.max(aabbA.min[2], aabbB.min[2]);
-  const centerAX = (aabbA.min[0] + aabbA.max[0]) * 0.5;
-  const centerAY = (aabbA.min[1] + aabbA.max[1]) * 0.5;
-  const centerAZ = (aabbA.min[2] + aabbA.max[2]) * 0.5;
-  const centerBX = (aabbB.min[0] + aabbB.max[0]) * 0.5;
-  const centerBY = (aabbB.min[1] + aabbB.max[1]) * 0.5;
-  const centerBZ = (aabbB.min[2] + aabbB.max[2]) * 0.5;
-  let normalX = 0;
-  let normalY = 0;
-  let normalZ = 0;
+function isDynamicBody(entity) {
+  return Boolean(entity.rigidbody && entity.rigidbody.type === "Dynamic" /* Dynamic */);
+}
+function getInvMass(entity) {
+  if (!isDynamicBody(entity) || entity.rigidbody.mass <= 0) {
+    return 0;
+  }
+  return 1 / entity.rigidbody.mass;
+}
+function getRestitution(entity) {
+  if (!entity.rigidbody) {
+    return 0;
+  }
+  return Math.max(0, Math.min(1, entity.rigidbody.restitution));
+}
+function getAABBCenter(aabb) {
+  return allocVec3(
+    (aabb.min[0] + aabb.max[0]) * 0.5,
+    (aabb.min[1] + aabb.max[1]) * 0.5,
+    (aabb.min[2] + aabb.max[2]) * 0.5
+  );
+}
+function getCollisionNormalAndPenetration(a, b) {
+  const overlapX = Math.min(a.max[0], b.max[0]) - Math.max(a.min[0], b.min[0]);
+  const overlapY = Math.min(a.max[1], b.max[1]) - Math.max(a.min[1], b.min[1]);
+  const overlapZ = Math.min(a.max[2], b.max[2]) - Math.max(a.min[2], b.min[2]);
+  if (overlapX <= 0 || overlapY <= 0 || overlapZ <= 0) {
+    return null;
+  }
+  const centerA = getAABBCenter(a);
+  const centerB = getAABBCenter(b);
+  let normal = allocVec3(1, 0, 0);
   let penetration = overlapX;
-  if (overlapX <= overlapY && overlapX <= overlapZ) {
-    normalX = centerBX >= centerAX ? 1 : -1;
-    penetration = overlapX;
-  } else if (overlapY <= overlapX && overlapY <= overlapZ) {
-    normalY = centerBY >= centerAY ? 1 : -1;
+  if (overlapY < penetration) {
+    normal = allocVec3(0, 1, 0);
     penetration = overlapY;
-  } else {
-    normalZ = centerBZ >= centerAZ ? 1 : -1;
+  }
+  if (overlapZ < penetration) {
+    normal = allocVec3(0, 0, 1);
     penetration = overlapZ;
   }
-  const invMassA = a.rigidbody.mass > 0 ? 1 / a.rigidbody.mass : 0;
-  const invMassB = b.rigidbody.mass > 0 ? 1 / b.rigidbody.mass : 0;
-  const invMassSum = invMassA + invMassB;
-  if (invMassSum <= 0) return true;
-  const rvX = b.rigidbody.velocity[0] - a.rigidbody.velocity[0];
-  const rvY = b.rigidbody.velocity[1] - a.rigidbody.velocity[1];
-  const rvZ = b.rigidbody.velocity[2] - a.rigidbody.velocity[2];
-  const velocityAlongNormal = rvX * normalX + rvY * normalY + rvZ * normalZ;
-  if (velocityAlongNormal < 0) {
-    const e = Math.max(0, Math.min(1, restitution));
-    const impulseMagnitude = -(1 + e) * velocityAlongNormal / invMassSum;
-    const impulseX = impulseMagnitude * normalX;
-    const impulseY = impulseMagnitude * normalY;
-    const impulseZ = impulseMagnitude * normalZ;
-    a.rigidbody.velocity[0] -= impulseX * invMassA;
-    a.rigidbody.velocity[1] -= impulseY * invMassA;
-    a.rigidbody.velocity[2] -= impulseZ * invMassA;
-    b.rigidbody.velocity[0] += impulseX * invMassB;
-    b.rigidbody.velocity[1] += impulseY * invMassB;
-    b.rigidbody.velocity[2] += impulseZ * invMassB;
-  }
-  const correctionX = penetration * normalX / invMassSum;
-  const correctionY = penetration * normalY / invMassSum;
-  const correctionZ = penetration * normalZ / invMassSum;
-  a.transform.translateBy(-correctionX * invMassA, -correctionY * invMassA, -correctionZ * invMassA);
-  b.transform.translateBy(correctionX * invMassB, correctionY * invMassB, correctionZ * invMassB);
-  a.collider.updateWorldAABB(a.transform);
-  b.collider.updateWorldAABB(b.transform);
-  return true;
+  if (normal[0] !== 0 && centerB[0] < centerA[0]) normal[0] = -1;
+  if (normal[1] !== 0 && centerB[1] < centerA[1]) normal[1] = -1;
+  if (normal[2] !== 0 && centerB[2] < centerA[2]) normal[2] = -1;
+  return { normal, penetration };
 }
-function simulatePhysics(bodies, deltaTime, solverIterations = 1, restitution = 1) {
-  for (const body of bodies) {
-    body.integrate(deltaTime);
+function applyPositionalCorrection(entityA, entityB, normal, penetration) {
+  const invMassA = getInvMass(entityA);
+  const invMassB = getInvMass(entityB);
+  const invMassSum = invMassA + invMassB;
+  if (invMassSum <= 0) {
+    return;
   }
-  const count = bodies.length;
-  for (let iteration = 0; iteration < solverIterations; iteration++) {
-    for (let i = 0; i < count - 1; i++) {
-      for (let j = i + 1; j < count; j++) {
-        resolveBodyCollision(bodies[i], bodies[j], restitution);
-      }
+  const slop = 1e-3;
+  const percent = 0.8;
+  const correctionMag = Math.max(penetration - slop, 0) * percent / invMassSum;
+  if (invMassA > 0) {
+    entityA.transform.position[0] -= normal[0] * correctionMag * invMassA;
+    entityA.transform.position[1] -= normal[1] * correctionMag * invMassA;
+    entityA.transform.position[2] -= normal[2] * correctionMag * invMassA;
+  }
+  if (invMassB > 0) {
+    entityB.transform.position[0] += normal[0] * correctionMag * invMassB;
+    entityB.transform.position[1] += normal[1] * correctionMag * invMassB;
+    entityB.transform.position[2] += normal[2] * correctionMag * invMassB;
+  }
+}
+function applyImpulse(entityA, entityB, normal) {
+  const invMassA = getInvMass(entityA);
+  const invMassB = getInvMass(entityB);
+  const invMassSum = invMassA + invMassB;
+  if (invMassSum <= 0) {
+    return;
+  }
+  const velocityA = entityA.rigidbody ? entityA.rigidbody.velocity : allocVec3(0, 0, 0);
+  const velocityB = entityB.rigidbody ? entityB.rigidbody.velocity : allocVec3(0, 0, 0);
+  const relativeVelocityX = velocityB[0] - velocityA[0];
+  const relativeVelocityY = velocityB[1] - velocityA[1];
+  const relativeVelocityZ = velocityB[2] - velocityA[2];
+  const velocityAlongNormal = relativeVelocityX * normal[0] + relativeVelocityY * normal[1] + relativeVelocityZ * normal[2];
+  if (velocityAlongNormal > 0) {
+    return;
+  }
+  const restitution = Math.min(getRestitution(entityA), getRestitution(entityB));
+  const impulseMagnitude = -(1 + restitution) * velocityAlongNormal / invMassSum;
+  const impulseX = impulseMagnitude * normal[0];
+  const impulseY = impulseMagnitude * normal[1];
+  const impulseZ = impulseMagnitude * normal[2];
+  if (isDynamicBody(entityA)) {
+    entityA.rigidbody.velocity[0] -= impulseX * invMassA;
+    entityA.rigidbody.velocity[1] -= impulseY * invMassA;
+    entityA.rigidbody.velocity[2] -= impulseZ * invMassA;
+  }
+  if (isDynamicBody(entityB)) {
+    entityB.rigidbody.velocity[0] += impulseX * invMassB;
+    entityB.rigidbody.velocity[1] += impulseY * invMassB;
+    entityB.rigidbody.velocity[2] += impulseZ * invMassB;
+  }
+}
+function getWorldAABB(entity) {
+  if (!hasColliderAABB(entity)) {
+    return null;
+  }
+  return aabbFromLocalToWorld(entity.physicsCollider.aabb, entity.transform);
+}
+function resolveCollision(entityA, entityB) {
+  const worldAABB = getWorldAABB(entityA);
+  const worldBABB = getWorldAABB(entityB);
+  if (!worldAABB || !worldBABB) {
+    return;
+  }
+  if (!worldAABB.intersects(worldBABB)) {
+    return;
+  }
+  const manifold = getCollisionNormalAndPenetration(worldAABB, worldBABB);
+  if (!manifold) {
+    return;
+  }
+  applyPositionalCorrection(entityA, entityB, manifold.normal, manifold.penetration);
+  applyImpulse(entityA, entityB, manifold.normal);
+}
+function integrate(entity, deltaTime) {
+  if (!isDynamicBody(entity)) {
+    return;
+  }
+  entity.rigidbody.acceleration[0] = gravity[0];
+  entity.rigidbody.acceleration[1] = gravity[1];
+  entity.rigidbody.acceleration[2] = gravity[2];
+  scaleAndAdd(entity.rigidbody.velocity, entity.rigidbody.velocity, entity.rigidbody.acceleration, deltaTime);
+  scaleAndAdd(entity.transform.position, entity.transform.position, entity.rigidbody.velocity, deltaTime);
+}
+function simulatePhysics(entities, deltaTime) {
+  for (const entity of entities) {
+    integrate(entity, deltaTime);
+  }
+  for (let i = 0; i < entities.length; i++) {
+    for (let j = i + 1; j < entities.length; j++) {
+      const entityA = entities[i];
+      const entityB = entities[j];
+      resolveCollision(entityA, entityB);
     }
   }
 }
@@ -1686,6 +1671,21 @@ var scene = new Scene(new camera_default(canvas.width / canvas.height, 0.1, 100,
 var renderer = new Renderer();
 var clock = new FixedStepClock(1 / 120);
 var input = new InputManager();
+var buunyrb = {
+  type: "Dynamic" /* Dynamic */,
+  mass: 1,
+  restitution: 0.25,
+  velocity: allocVec3(0, 0, 0),
+  acceleration: allocVec3(0, 0, 0)
+};
+var groudnrb = {
+  type: "Static" /* Static */,
+  mass: 0,
+  // immovable object
+  restitution: 0.25,
+  velocity: allocVec3(0, 0, 0),
+  acceleration: allocVec3(0, 0, 0)
+};
 var transformBunny = new Transform();
 transformBunny.setTranslation(0, 0, 0);
 transformBunny.setScale(1.5, 1.5, 1.5);
@@ -1695,34 +1695,33 @@ var bunnymat = {
 };
 var bunnyMesh = new Mesh(Assets.getModel("bunny"), gl);
 var bunnyRenderable = new Renderable(bunnyMesh, bunnymat, transformBunny);
-scene.add(bunnyRenderable);
-var bunnyBody = new PhysicsBody(
-  transformBunny,
-  new PhysicsCollider(bunnyMesh.aabb),
-  {
-    mass: 1,
-    velocity: allocVec3(0, 0, 0),
-    acceleration: allocVec3(0, -1.81, 0)
-  }
-);
+var bunnyEntity = {
+  transform: transformBunny,
+  renderable: bunnyRenderable,
+  physicsCollider: {
+    aabb: bunnyMesh.aabb,
+    showDebug: true
+  },
+  rigidbody: buunyrb
+};
+scene.add(bunnyEntity);
 var groundPlane = new Mesh(Assets.getModel("cube"), gl);
 var groundTransform = new Transform().setScale(1, 0.1, 1).setTranslation(0, -1, 0);
 var groundRenderable = new Renderable(groundPlane, bunnymat, groundTransform);
-var groundBody = new PhysicsBody(
-  groundTransform,
-  new PhysicsCollider(groundPlane.aabb),
-  {
-    mass: 0,
-    velocity: allocVec3(0, 0, 0),
-    acceleration: allocVec3(0, 0, 0)
-  }
-);
-var physicsBodies = [bunnyBody, groundBody];
-scene.add(groundRenderable);
+var groundEntity = {
+  transform: groundTransform,
+  renderable: groundRenderable,
+  physicsCollider: {
+    aabb: groundPlane.aabb,
+    showDebug: false
+  },
+  rigidbody: groudnrb
+};
+scene.add(groundEntity);
 function fixedUpdate(deltaTime) {
   input.update();
   scene.camera.processInput(input, deltaTime);
-  simulatePhysics(physicsBodies, deltaTime, 3, 0.7);
+  simulatePhysics(scene.entities, deltaTime);
 }
 function gameloop() {
   const steps = clock.tick();

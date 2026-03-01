@@ -38,7 +38,7 @@ export class Renderable {
     private updateModelMatrix(): void {
         // Model: M = T * R * S
         identity(this.model);
-        translate(this.model, this.model, this.transform.translation);
+        translate(this.model, this.model, this.transform.position);
         const rotationAngle = this.transform.getRotationAxisAngle(this.rotationAxis);
         rotate(this.temp, this.model, rotationAngle, this.rotationAxis);
         scale(this.model, this.temp, this.transform.scaling);

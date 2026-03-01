@@ -8,9 +8,11 @@ import {
     normalizeQuaternion,
 } from "@/math/quaternion";
 export class Transform {
-    translation: Vec3 = allocVec3(0, 0, 0);
+    position: Vec3 = allocVec3(0, 0, 0);
     scaling: Vec3 = allocVec3(1, 1, 1);
-    rotation: Quaternion = allocQuaternion(0, 0, 0, 1);
+    rotation: Quaternion = allocQuaternion(0, 0, 0, 1); 
+    // (x, y, z) imaginary part, w scalar part -> rotation axis is (x, y, z) and angle is 2 * acos(w)
+
     private revision = 0;
 
     get version(): number {
@@ -22,17 +24,17 @@ export class Transform {
     }
 
     setTranslation(x: number, y: number, z: number): this {
-        this.translation[0] = x;
-        this.translation[1] = y;
-        this.translation[2] = z;
+        this.position[0] = x;
+        this.position[1] = y;
+        this.position[2] = z;
         this.markChanged();
         return this;
     }
 
     translateBy(dx: number, dy: number, dz: number): this {
-        this.translation[0] += dx;
-        this.translation[1] += dy;
-        this.translation[2] += dz;
+        this.position[0] += dx;
+        this.position[1] += dy;
+        this.position[2] += dz;
         this.markChanged();
         return this;
     }

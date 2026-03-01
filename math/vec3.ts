@@ -66,4 +66,5 @@ export function scaleAndAdd(out: Vec3, a: Vec3, b: Vec3, scale: number): Vec3 {
     out[2] = a[2] + b[2] * scale;
     return out;
 }
+ 
 

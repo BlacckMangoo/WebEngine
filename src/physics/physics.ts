@@ -1,262 +1,232 @@
-import { Vec3 } from "@/math/vec3";
-import { AABB } from "./aabb";
-import { Transform } from "../graphics/transform";
-import { allocVec3 } from "@/math/vec3";
+import { Vec3,allocVec3, scaleAndAdd } from "@/math/vec3";
+import { AABB ,aabbFromLocalToWorld} from "./aabb";
+import { Entity } from "../core/entity";
+
+
+
+// global physics properties
+const gravity = allocVec3(0, -0.81, 0); // gravity vector in negative y direction
 
 
 export interface Rigidbody {
+    type : RigidbodyType ;
     mass : number ; 
+    restitution : number ;
     velocity : Vec3 ;
     acceleration : Vec3 ;
 }
 
-export class PhysicsCollider {
-    readonly localAABB: AABB;
-    readonly worldAABB: AABB;
+export enum RigidbodyType {
+    Dynamic = "Dynamic",
+    Static = "Static"
+}
 
-    private lastTransformVersion = -1;
-    private readonly corner = allocVec3();
+export interface PhysicsCollider {
+    aabb : AABB | null ;
+    showDebug : boolean ;
+}
 
-    constructor(localAABB: AABB) {
-        this.localAABB = localAABB;
-        this.worldAABB = new AABB(allocVec3(), allocVec3());
+function hasColliderAABB(entity: Entity): entity is Entity & { physicsCollider: PhysicsCollider & { aabb: AABB } } {
+    return Boolean(entity.physicsCollider?.aabb);
+}
+
+function isDynamicBody(entity: Entity): entity is Entity & { rigidbody: Rigidbody } {
+    return Boolean(entity.rigidbody && entity.rigidbody.type === RigidbodyType.Dynamic);
+}
+
+function getInvMass(entity: Entity): number {
+    if (!isDynamicBody(entity) || entity.rigidbody.mass <= 0) {
+        return 0;
     }
 
-    updateWorldAABB(transform: Transform): void {
-        if (this.lastTransformVersion === transform.version) return;
+    return 1 / entity.rigidbody.mass;
+}
 
-        const minX = this.localAABB.min[0];
-        const minY = this.localAABB.min[1];
-        const minZ = this.localAABB.min[2];
-        const maxX = this.localAABB.max[0];
-        const maxY = this.localAABB.max[1];
-        const maxZ = this.localAABB.max[2];
-
-        let worldMinX = Number.POSITIVE_INFINITY;
-        let worldMinY = Number.POSITIVE_INFINITY;
-        let worldMinZ = Number.POSITIVE_INFINITY;
-        let worldMaxX = Number.NEGATIVE_INFINITY;
-        let worldMaxY = Number.NEGATIVE_INFINITY;
-        let worldMaxZ = Number.NEGATIVE_INFINITY;
-
-        transformAABBCornerToWorld(this.corner, transform, minX, minY, minZ);
-        if (this.corner[0] < worldMinX) worldMinX = this.corner[0];
-        if (this.corner[1] < worldMinY) worldMinY = this.corner[1];
-        if (this.corner[2] < worldMinZ) worldMinZ = this.corner[2];
-        if (this.corner[0] > worldMaxX) worldMaxX = this.corner[0];
-        if (this.corner[1] > worldMaxY) worldMaxY = this.corner[1];
-        if (this.corner[2] > worldMaxZ) worldMaxZ = this.corner[2];
-
-        transformAABBCornerToWorld(this.corner, transform, maxX, minY, minZ);
-        if (this.corner[0] < worldMinX) worldMinX = this.corner[0];
-        if (this.corner[1] < worldMinY) worldMinY = this.corner[1];
-        if (this.corner[2] < worldMinZ) worldMinZ = this.corner[2];
-        if (this.corner[0] > worldMaxX) worldMaxX = this.corner[0];
-        if (this.corner[1] > worldMaxY) worldMaxY = this.corner[1];
-        if (this.corner[2] > worldMaxZ) worldMaxZ = this.corner[2];
-
-        transformAABBCornerToWorld(this.corner, transform, minX, maxY, minZ);
-        if (this.corner[0] < worldMinX) worldMinX = this.corner[0];
-        if (this.corner[1] < worldMinY) worldMinY = this.corner[1];
-        if (this.corner[2] < worldMinZ) worldMinZ = this.corner[2];
-        if (this.corner[0] > worldMaxX) worldMaxX = this.corner[0];
-        if (this.corner[1] > worldMaxY) worldMaxY = this.corner[1];
-        if (this.corner[2] > worldMaxZ) worldMaxZ = this.corner[2];
-
-        transformAABBCornerToWorld(this.corner, transform, maxX, maxY, minZ);
-        if (this.corner[0] < worldMinX) worldMinX = this.corner[0];
-        if (this.corner[1] < worldMinY) worldMinY = this.corner[1];
-        if (this.corner[2] < worldMinZ) worldMinZ = this.corner[2];
-        if (this.corner[0] > worldMaxX) worldMaxX = this.corner[0];
-        if (this.corner[1] > worldMaxY) worldMaxY = this.corner[1];
-        if (this.corner[2] > worldMaxZ) worldMaxZ = this.corner[2];
-
-        transformAABBCornerToWorld(this.corner, transform, minX, minY, maxZ);
-        if (this.corner[0] < worldMinX) worldMinX = this.corner[0];
-        if (this.corner[1] < worldMinY) worldMinY = this.corner[1];
-        if (this.corner[2] < worldMinZ) worldMinZ = this.corner[2];
-        if (this.corner[0] > worldMaxX) worldMaxX = this.corner[0];
-        if (this.corner[1] > worldMaxY) worldMaxY = this.corner[1];
-        if (this.corner[2] > worldMaxZ) worldMaxZ = this.corner[2];
-
-        transformAABBCornerToWorld(this.corner, transform, maxX, minY, maxZ);
-        if (this.corner[0] < worldMinX) worldMinX = this.corner[0];
-        if (this.corner[1] < worldMinY) worldMinY = this.corner[1];
-        if (this.corner[2] < worldMinZ) worldMinZ = this.corner[2];
-        if (this.corner[0] > worldMaxX) worldMaxX = this.corner[0];
-        if (this.corner[1] > worldMaxY) worldMaxY = this.corner[1];
-        if (this.corner[2] > worldMaxZ) worldMaxZ = this.corner[2];
-
-        transformAABBCornerToWorld(this.corner, transform, minX, maxY, maxZ);
-        if (this.corner[0] < worldMinX) worldMinX = this.corner[0];
-        if (this.corner[1] < worldMinY) worldMinY = this.corner[1];
-        if (this.corner[2] < worldMinZ) worldMinZ = this.corner[2];
-        if (this.corner[0] > worldMaxX) worldMaxX = this.corner[0];
-        if (this.corner[1] > worldMaxY) worldMaxY = this.corner[1];
-        if (this.corner[2] > worldMaxZ) worldMaxZ = this.corner[2];
-
-        transformAABBCornerToWorld(this.corner, transform, maxX, maxY, maxZ);
-        if (this.corner[0] < worldMinX) worldMinX = this.corner[0];
-        if (this.corner[1] < worldMinY) worldMinY = this.corner[1];
-        if (this.corner[2] < worldMinZ) worldMinZ = this.corner[2];
-        if (this.corner[0] > worldMaxX) worldMaxX = this.corner[0];
-        if (this.corner[1] > worldMaxY) worldMaxY = this.corner[1];
-        if (this.corner[2] > worldMaxZ) worldMaxZ = this.corner[2];
-
-        this.worldAABB.min[0] = worldMinX;
-        this.worldAABB.min[1] = worldMinY;
-        this.worldAABB.min[2] = worldMinZ;
-        this.worldAABB.max[0] = worldMaxX;
-        this.worldAABB.max[1] = worldMaxY;
-        this.worldAABB.max[2] = worldMaxZ;
-
-        this.lastTransformVersion = transform.version;
+function getRestitution(entity: Entity): number {
+    if (!entity.rigidbody) {
+        return 0;
     }
+
+    return Math.max(0, Math.min(1, entity.rigidbody.restitution));
 }
 
-export class PhysicsBody {
-    constructor(
-        public transform: Transform,
-        public collider: PhysicsCollider,
-        public rigidbody: Rigidbody,
-    ) {}
+function getAABBCenter(aabb: AABB): Vec3 {
+    return allocVec3(
+        (aabb.min[0] + aabb.max[0]) * 0.5,
+        (aabb.min[1] + aabb.max[1]) * 0.5,
+        (aabb.min[2] + aabb.max[2]) * 0.5
+    );
+}
 
-    integrate(deltaTime: number): void {
-        this.rigidbody.velocity[0] += this.rigidbody.acceleration[0] * deltaTime;
-        this.rigidbody.velocity[1] += this.rigidbody.acceleration[1] * deltaTime;
-        this.rigidbody.velocity[2] += this.rigidbody.acceleration[2] * deltaTime;
+function getCollisionNormalAndPenetration(a: AABB, b: AABB): { normal: Vec3; penetration: number } | null {
+    const overlapX = Math.min(a.max[0], b.max[0]) - Math.max(a.min[0], b.min[0]);
+    const overlapY = Math.min(a.max[1], b.max[1]) - Math.max(a.min[1], b.min[1]);
+    const overlapZ = Math.min(a.max[2], b.max[2]) - Math.max(a.min[2], b.min[2]);
 
-        this.transform.translateBy(
-            this.rigidbody.velocity[0] * deltaTime,
-            this.rigidbody.velocity[1] * deltaTime,
-            this.rigidbody.velocity[2] * deltaTime,
-        );
-
-        this.collider.updateWorldAABB(this.transform);
+    if (overlapX <= 0 || overlapY <= 0 || overlapZ <= 0) {
+        return null;
     }
-}
 
-function transformAABBCornerToWorld(
-    out: Vec3,
-    transform: Transform,
-    x: number,
-    y: number,
-    z: number
-): void {
-    out[0] = x * transform.scaling[0];
-    out[1] = y * transform.scaling[1];
-    out[2] = z * transform.scaling[2];
+    const centerA = getAABBCenter(a);
+    const centerB = getAABBCenter(b);
 
-    transform.rotateVec3(out, out);
-
-    out[0] += transform.translation[0];
-    out[1] += transform.translation[1];
-    out[2] += transform.translation[2];
-}
-
-export function toWorldAABB(localAABB: AABB, transform: Transform): AABB {
-    const collider = new PhysicsCollider(localAABB);
-    collider.updateWorldAABB(transform);
-    return collider.worldAABB;
-}
-
-export function detectBodyCollision(a: PhysicsBody, b: PhysicsBody): boolean {
-    a.collider.updateWorldAABB(a.transform);
-    b.collider.updateWorldAABB(b.transform);
-    return a.collider.worldAABB.intersects(b.collider.worldAABB);
-}
-
-export function resolveBodyCollision(a: PhysicsBody, b: PhysicsBody, restitution: number = 1): boolean {
-    a.collider.updateWorldAABB(a.transform);
-    b.collider.updateWorldAABB(b.transform);
-
-    const aabbA = a.collider.worldAABB;
-    const aabbB = b.collider.worldAABB;
-    if (!aabbA.intersects(aabbB)) return false;
-
-    const overlapX = Math.min(aabbA.max[0], aabbB.max[0]) - Math.max(aabbA.min[0], aabbB.min[0]);
-    const overlapY = Math.min(aabbA.max[1], aabbB.max[1]) - Math.max(aabbA.min[1], aabbB.min[1]);
-    const overlapZ = Math.min(aabbA.max[2], aabbB.max[2]) - Math.max(aabbA.min[2], aabbB.min[2]);
-
-    const centerAX = (aabbA.min[0] + aabbA.max[0]) * 0.5;
-    const centerAY = (aabbA.min[1] + aabbA.max[1]) * 0.5;
-    const centerAZ = (aabbA.min[2] + aabbA.max[2]) * 0.5;
-    const centerBX = (aabbB.min[0] + aabbB.max[0]) * 0.5;
-    const centerBY = (aabbB.min[1] + aabbB.max[1]) * 0.5;
-    const centerBZ = (aabbB.min[2] + aabbB.max[2]) * 0.5;
-
-    let normalX = 0;
-    let normalY = 0;
-    let normalZ = 0;
+    let normal = allocVec3(1, 0, 0);
     let penetration = overlapX;
 
-    if (overlapX <= overlapY && overlapX <= overlapZ) {
-        normalX = centerBX >= centerAX ? 1 : -1;
-        penetration = overlapX;
-    } else if (overlapY <= overlapX && overlapY <= overlapZ) {
-        normalY = centerBY >= centerAY ? 1 : -1;
+    if (overlapY < penetration) {
+        normal = allocVec3(0, 1, 0);
         penetration = overlapY;
-    } else {
-        normalZ = centerBZ >= centerAZ ? 1 : -1;
+    }
+
+    if (overlapZ < penetration) {
+        normal = allocVec3(0, 0, 1);
         penetration = overlapZ;
     }
 
-    const invMassA = a.rigidbody.mass > 0 ? 1 / a.rigidbody.mass : 0;
-    const invMassB = b.rigidbody.mass > 0 ? 1 / b.rigidbody.mass : 0;
+    if (normal[0] !== 0 && centerB[0] < centerA[0]) normal[0] = -1;
+    if (normal[1] !== 0 && centerB[1] < centerA[1]) normal[1] = -1;
+    if (normal[2] !== 0 && centerB[2] < centerA[2]) normal[2] = -1;
+
+    return { normal, penetration };
+}
+
+function applyPositionalCorrection(entityA: Entity, entityB: Entity, normal: Vec3, penetration: number): void {
+    const invMassA = getInvMass(entityA);
+    const invMassB = getInvMass(entityB);
     const invMassSum = invMassA + invMassB;
-    if (invMassSum <= 0) return true;
 
-    const rvX = b.rigidbody.velocity[0] - a.rigidbody.velocity[0];
-    const rvY = b.rigidbody.velocity[1] - a.rigidbody.velocity[1];
-    const rvZ = b.rigidbody.velocity[2] - a.rigidbody.velocity[2];
-    const velocityAlongNormal = rvX * normalX + rvY * normalY + rvZ * normalZ;
-
-    if (velocityAlongNormal < 0) {
-        const e = Math.max(0, Math.min(1, restitution));
-        const impulseMagnitude = (-(1 + e) * velocityAlongNormal) / invMassSum;
-        const impulseX = impulseMagnitude * normalX;
-        const impulseY = impulseMagnitude * normalY;
-        const impulseZ = impulseMagnitude * normalZ;
-
-        a.rigidbody.velocity[0] -= impulseX * invMassA;
-        a.rigidbody.velocity[1] -= impulseY * invMassA;
-        a.rigidbody.velocity[2] -= impulseZ * invMassA;
-
-        b.rigidbody.velocity[0] += impulseX * invMassB;
-        b.rigidbody.velocity[1] += impulseY * invMassB;
-        b.rigidbody.velocity[2] += impulseZ * invMassB;
+    if (invMassSum <= 0) {
+        return;
     }
 
-    const correctionX = (penetration * normalX) / invMassSum;
-    const correctionY = (penetration * normalY) / invMassSum;
-    const correctionZ = (penetration * normalZ) / invMassSum;
+    const slop = 0.001;
+    const percent = 0.8;
+    const correctionMag = Math.max(penetration - slop, 0) * percent / invMassSum;
 
-    a.transform.translateBy(-correctionX * invMassA, -correctionY * invMassA, -correctionZ * invMassA);
-    b.transform.translateBy(correctionX * invMassB, correctionY * invMassB, correctionZ * invMassB);
-
-    a.collider.updateWorldAABB(a.transform);
-    b.collider.updateWorldAABB(b.transform);
-
-    return true;
-}
-
-export function simulatePhysics(
-    bodies: PhysicsBody[],
-    deltaTime: number,
-    solverIterations: number = 1,
-    restitution: number = 1,
-): void {
-    for (const body of bodies) {
-        body.integrate(deltaTime);
+    if (invMassA > 0) {
+        entityA.transform.position[0] -= normal[0] * correctionMag * invMassA;
+        entityA.transform.position[1] -= normal[1] * correctionMag * invMassA;
+        entityA.transform.position[2] -= normal[2] * correctionMag * invMassA;
     }
 
-    const count = bodies.length;
-    for (let iteration = 0; iteration < solverIterations; iteration++) {
-        for (let i = 0; i < count - 1; i++) {
-            for (let j = i + 1; j < count; j++) {
-                resolveBodyCollision(bodies[i], bodies[j], restitution);
-            }
-        }
+    if (invMassB > 0) {
+        entityB.transform.position[0] += normal[0] * correctionMag * invMassB;
+        entityB.transform.position[1] += normal[1] * correctionMag * invMassB;
+        entityB.transform.position[2] += normal[2] * correctionMag * invMassB;
     }
 }
 
+function applyImpulse(entityA: Entity, entityB: Entity, normal: Vec3): void {
+    const invMassA = getInvMass(entityA);
+    const invMassB = getInvMass(entityB);
+    const invMassSum = invMassA + invMassB;
+
+    if (invMassSum <= 0) {
+        return;
+    }
+
+    const velocityA = entityA.rigidbody ? entityA.rigidbody.velocity : allocVec3(0, 0, 0);
+    const velocityB = entityB.rigidbody ? entityB.rigidbody.velocity : allocVec3(0, 0, 0);
+
+    const relativeVelocityX = velocityB[0] - velocityA[0];
+    const relativeVelocityY = velocityB[1] - velocityA[1];
+    const relativeVelocityZ = velocityB[2] - velocityA[2];
+    const velocityAlongNormal =
+        relativeVelocityX * normal[0] +
+        relativeVelocityY * normal[1] +
+        relativeVelocityZ * normal[2];
+
+    if (velocityAlongNormal > 0) {
+        return;
+    }
+
+    const restitution = Math.min(getRestitution(entityA), getRestitution(entityB));
+    const impulseMagnitude = -(1 + restitution) * velocityAlongNormal / invMassSum;
+    const impulseX = impulseMagnitude * normal[0];
+    const impulseY = impulseMagnitude * normal[1];
+    const impulseZ = impulseMagnitude * normal[2];
+
+    if (isDynamicBody(entityA)) {
+        entityA.rigidbody.velocity[0] -= impulseX * invMassA;
+        entityA.rigidbody.velocity[1] -= impulseY * invMassA;
+        entityA.rigidbody.velocity[2] -= impulseZ * invMassA;
+    }
+
+    if (isDynamicBody(entityB)) {
+        entityB.rigidbody.velocity[0] += impulseX * invMassB;
+        entityB.rigidbody.velocity[1] += impulseY * invMassB;
+        entityB.rigidbody.velocity[2] += impulseZ * invMassB;
+    }
+}
+
+function getWorldAABB(entity: Entity): AABB | null {
+    if (!hasColliderAABB(entity)) {
+        return null;
+    }
+
+    return aabbFromLocalToWorld(entity.physicsCollider.aabb, entity.transform);
+}
+
+
+
+
+
+
+function resolveCollision(entityA: Entity, entityB: Entity): void {
+    const worldAABB = getWorldAABB(entityA);
+    const worldBABB = getWorldAABB(entityB);
+
+    if (!worldAABB || !worldBABB) {
+        return;
+    }
+
+    if (!worldAABB.intersects(worldBABB)) {
+        return;
+    }
+
+    const manifold = getCollisionNormalAndPenetration(worldAABB, worldBABB);
+    if (!manifold) {
+        return;
+    }
+
+    applyPositionalCorrection(entityA, entityB, manifold.normal, manifold.penetration);
+    applyImpulse(entityA, entityB, manifold.normal);
+}
+
+
+function integrate( entity : Entity , deltaTime : number ) {
+    // simple euler integration
+    if (!isDynamicBody(entity)) {
+        return;
+    }
+
+    // apply gravity
+    //acceleration = gravity
+    entity.rigidbody.acceleration[0] = gravity[0];
+    entity.rigidbody.acceleration[1] = gravity[1];
+    entity.rigidbody.acceleration[2] = gravity[2];
+    // means : velocity += acceleration * deltaTime ;
+
+    scaleAndAdd(entity.rigidbody.velocity, entity.rigidbody.velocity, entity.rigidbody.acceleration, deltaTime);
+    //  position += velocity * deltaTime
+    scaleAndAdd(entity.transform.position, entity.transform.position, entity.rigidbody.velocity, deltaTime);
+}
+
+export function simulatePhysics( entities : Entity[] , deltaTime : number ) {
+    // simple physics simulation : apply gravity and check for collisions
+
+    for (const entity of entities) {
+        integrate(entity, deltaTime);
+    }
+
+    for( let i =0; i<entities.length; i++) {
+        for( let j = i+1; j<entities.length; j++) {
+            const entityA = entities[i];
+            const entityB = entities[j];
+           
+          resolveCollision(entityA, entityB);
+        
+    }
+}
+
+}

@@ -18,8 +18,10 @@ export class Renderer {
         gl.viewport(0, 0, canvas.width, canvas.height);
         gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
 
-        for (const renderable of scene.renderables) {
-            renderable.draw(scene.camera);
+        for (const entity of scene.entities) {
+            if (entity.renderable) {
+                entity.renderable.draw(scene.camera);
+            }
         }
     }
 

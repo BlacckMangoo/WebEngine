@@ -38,8 +38,8 @@ class Camera {
 
     public getViewMatrix(view: Mat4): Mat4 {
         this.deriveBasisVectors();
-        scaleAndAdd(this.viewTarget, this.transform.translation, this.forward, 1);
-        return lookAt(view, this.transform.translation, this.viewTarget, this.up);
+        scaleAndAdd(this.viewTarget, this.transform.position, this.forward, 1);
+        return lookAt(view, this.transform.position, this.viewTarget, this.up);
     }
 
     public getProjectionMatrix(projection: Mat4): Mat4 {
@@ -59,23 +59,23 @@ class Camera {
 
         // WASD movement
         if (input.isKeyPressed(KeyCode.W)) {
-            scaleAndAdd(this.transform.translation, this.transform.translation, this.forward, speed);
+            scaleAndAdd(this.transform.position, this.transform.position, this.forward, speed);
         }
         if (input.isKeyPressed(KeyCode.S)) {
-            scaleAndAdd(this.transform.translation, this.transform.translation, this.forward, -speed);
+            scaleAndAdd(this.transform.position, this.transform.position, this.forward, -speed);
         }
         if (input.isKeyPressed(KeyCode.A)) {
-            scaleAndAdd(this.transform.translation, this.transform.translation, this.right, -speed);
+            scaleAndAdd(this.transform.position, this.transform.position, this.right, -speed);
         }
         if (input.isKeyPressed(KeyCode.D)) {
-            scaleAndAdd(this.transform.translation, this.transform.translation, this.right, speed);
+            scaleAndAdd(this.transform.position, this.transform.position, this.right, speed);
         }
 
         if (input.isKeyPressed(KeyCode.ArrowUp)) {
-            translateY(this.transform.translation, speed);
+            translateY(this.transform.position, speed);
         }
         if (input.isKeyPressed(KeyCode.ArrowDown)) {
-            translateY(this.transform.translation, -speed);
+            translateY(this.transform.position, -speed);
         }
 
         // rotate with arrow keys
