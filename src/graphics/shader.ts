@@ -41,7 +41,8 @@ export class Shader {
     setMat4(name: string, mat: Float32Array) {
         const loc = gl.getUniformLocation(this.program, name);
         if (loc === null) {
-            throw new Error(`Uniform ${name} not found`);
+            console.warn(`Uniform ${name} not found`);
+            return;
         }
         gl.uniformMatrix4fv(loc, false, mat);
     }
@@ -49,7 +50,8 @@ export class Shader {
     setVec3(name: string, vec: Float32Array) {
         const loc = gl.getUniformLocation(this.program, name);
         if (loc === null) {
-            throw new Error(`Uniform ${name} not found`);
+            console.warn(`Uniform ${name} not found`);
+            return;
         }
         gl.uniform3fv(loc, vec);
     }
@@ -57,9 +59,37 @@ export class Shader {
     setInt(name: string, value: number) {
         const loc = gl.getUniformLocation(this.program, name);
         if (loc === null) {
-            throw new Error(`Uniform ${name} not found`);
+            console.warn(`Uniform ${name} not found`);
+            return;
         }
         gl.uniform1i(loc, value);
+    }
+
+    setFloat(name: string, value: number) {
+        const loc = gl.getUniformLocation(this.program, name);
+        if (loc === null) {
+            console.warn(`Uniform ${name} not found`);
+            return;
+        }
+        gl.uniform1f(loc, value);
+    }
+
+    setVec3Array(name: string, values: Float32Array[]) {
+        for (let i = 0; i < values.length; i++) {
+            const loc = gl.getUniformLocation(this.program, `${name}[${i}]`);
+            if (loc !== null) {
+                gl.uniform3fv(loc, values[i]);
+            }
+        }
+    }
+
+    setFloatArray(name: string, values: number[]) {
+        for (let i = 0; i < values.length; i++) {
+            const loc = gl.getUniformLocation(this.program, `${name}[${i}]`);
+            if (loc !== null) {
+                gl.uniform1f(loc, values[i]);
+            }
+        }
     }
 
 }

@@ -524,214 +524,6 @@ var Camera = class {
 };
 var camera_default = Camera;
 
-// src/physics/aabb.ts
-var AABB = class {
-  constructor(min, max) {
-    this.min = min;
-    this.max = max;
-    this.min = min;
-    this.max = max;
-  }
-  intersects(other) {
-    return this.min[0] <= other.max[0] && this.max[0] >= other.min[0] && (this.min[1] <= other.max[1] && this.max[1] >= other.min[1]) && (this.min[2] <= other.max[2] && this.max[2] >= other.min[2]);
-  }
-};
-function aabbFromLocalToWorld(localAABB, transform) {
-  const corner1 = allocVec3(localAABB.min[0], localAABB.min[1], localAABB.min[2]);
-  const corner2 = allocVec3(localAABB.max[0], localAABB.min[1], localAABB.min[2]);
-  const corner3 = allocVec3(localAABB.min[0], localAABB.max[1], localAABB.min[2]);
-  const corner4 = allocVec3(localAABB.min[0], localAABB.min[1], localAABB.max[2]);
-  const corner5 = allocVec3(localAABB.max[0], localAABB.max[1], localAABB.min[2]);
-  const corner6 = allocVec3(localAABB.max[0], localAABB.min[1], localAABB.max[2]);
-  const corner7 = allocVec3(localAABB.min[0], localAABB.max[1], localAABB.max[2]);
-  const corner8 = allocVec3(localAABB.max[0], localAABB.max[1], localAABB.max[2]);
-  const localCorners = [corner1, corner2, corner3, corner4, corner5, corner6, corner7, corner8];
-  const worldMin = allocVec3(Number.POSITIVE_INFINITY, Number.POSITIVE_INFINITY, Number.POSITIVE_INFINITY);
-  const worldMax = allocVec3(Number.NEGATIVE_INFINITY, Number.NEGATIVE_INFINITY, Number.NEGATIVE_INFINITY);
-  for (const localCorner of localCorners) {
-    const scaledCorner = allocVec3(
-      localCorner[0] * transform.scaling[0],
-      localCorner[1] * transform.scaling[1],
-      localCorner[2] * transform.scaling[2]
-    );
-    const rotatedCorner = allocVec3();
-    transform.rotateVec3(rotatedCorner, scaledCorner);
-    const worldCorner = allocVec3();
-    scaleAndAdd(worldCorner, transform.position, rotatedCorner, 1);
-    worldMin[0] = Math.min(worldMin[0], worldCorner[0]);
-    worldMin[1] = Math.min(worldMin[1], worldCorner[1]);
-    worldMin[2] = Math.min(worldMin[2], worldCorner[2]);
-    worldMax[0] = Math.max(worldMax[0], worldCorner[0]);
-    worldMax[1] = Math.max(worldMax[1], worldCorner[1]);
-    worldMax[2] = Math.max(worldMax[2], worldCorner[2]);
-  }
-  return new AABB(worldMin, worldMax);
-}
-
-// src/graphics/mesh.ts
-var VertexLayout = class {
-  stride;
-  attributes;
-  constructor(stride, attributes) {
-    this.stride = stride;
-    this.attributes = attributes;
-  }
-};
-var pos3norm3 = new VertexLayout(24, [
-  { location: 0, size: 3, type: gl.FLOAT, normalized: false, offset: 0 },
-  { location: 1, size: 3, type: gl.FLOAT, normalized: false, offset: 12 }
-]);
-function createAABBWireframeData(aabb) {
-  const minX = aabb.min[0];
-  const minY = aabb.min[1];
-  const minZ = aabb.min[2];
-  const maxX = aabb.max[0];
-  const maxY = aabb.max[1];
-  const maxZ = aabb.max[2];
-  const vertices = [
-    minX,
-    minY,
-    minZ,
-    maxX,
-    minY,
-    minZ,
-    maxX,
-    maxY,
-    minZ,
-    minX,
-    maxY,
-    minZ,
-    minX,
-    minY,
-    maxZ,
-    maxX,
-    minY,
-    maxZ,
-    maxX,
-    maxY,
-    maxZ,
-    minX,
-    maxY,
-    maxZ
-  ];
-  const indices = [
-    0,
-    1,
-    1,
-    2,
-    2,
-    3,
-    3,
-    0,
-    4,
-    5,
-    5,
-    6,
-    6,
-    7,
-    7,
-    4,
-    0,
-    4,
-    1,
-    5,
-    2,
-    6,
-    3,
-    7
-  ];
-  return { vertices, indices };
-}
-function createAABBFromVertices(vertices) {
-  let minX = Number.POSITIVE_INFINITY;
-  let minY = Number.POSITIVE_INFINITY;
-  let minZ = Number.POSITIVE_INFINITY;
-  let maxX = Number.NEGATIVE_INFINITY;
-  let maxY = Number.NEGATIVE_INFINITY;
-  let maxZ = Number.NEGATIVE_INFINITY;
-  let x, y, z;
-  for (let i = 0; i < vertices.length; i += 3) {
-    x = vertices[i];
-    y = vertices[i + 1];
-    z = vertices[i + 2];
-    if (x < minX) minX = x;
-    if (y < minY) minY = y;
-    if (z < minZ) minZ = z;
-    if (x > maxX) maxX = x;
-    if (y > maxY) maxY = y;
-    if (z > maxZ) maxZ = z;
-  }
-  const min = allocVec3(minX, minY, minZ);
-  const max = allocVec3(maxX, maxY, maxZ);
-  return new AABB(min, max);
-}
-var Mesh = class _Mesh {
-  vertexData = new Float32Array();
-  indices = new Uint32Array();
-  vbo;
-  ibo;
-  layout;
-  vertexCount = 0;
-  aabb;
-  primitive;
-  constructor(data, gl2, primitive = gl2.TRIANGLES) {
-    this.indices = new Uint32Array(data.indices);
-    this.layout = pos3norm3;
-    this.vertexCount = data.vertices.length / 3;
-    const normals = data.normals ?? new Array(this.vertexCount * 3).fill(0);
-    if (normals.length !== this.vertexCount * 3) {
-      throw new Error("Invalid normals length for mesh");
-    }
-    this.primitive = primitive;
-    this.vertexData = new Float32Array(this.vertexCount * 6);
-    for (let i = 0; i < this.vertexCount; i++) {
-      this.vertexData[i * 6] = data.vertices[i * 3];
-      this.vertexData[i * 6 + 1] = data.vertices[i * 3 + 1];
-      this.vertexData[i * 6 + 2] = data.vertices[i * 3 + 2];
-      this.vertexData[i * 6 + 3] = normals[i * 3];
-      this.vertexData[i * 6 + 4] = normals[i * 3 + 1];
-      this.vertexData[i * 6 + 5] = normals[i * 3 + 2];
-    }
-    this.aabb = createAABBFromVertices(data.vertices);
-    this.vbo = gl2.createBuffer();
-    this.ibo = gl2.createBuffer();
-    gl2.bindBuffer(gl2.ELEMENT_ARRAY_BUFFER, this.ibo);
-    gl2.bufferData(gl2.ELEMENT_ARRAY_BUFFER, this.indices, gl2.STATIC_DRAW);
-    gl2.bindBuffer(gl2.ARRAY_BUFFER, this.vbo);
-    gl2.bufferData(gl2.ARRAY_BUFFER, this.vertexData, gl2.STATIC_DRAW);
-  }
-  static createAABBWireframe(aabb, gl2) {
-    const wireframeData = createAABBWireframeData(aabb);
-    return new _Mesh(wireframeData, gl2, gl2.LINES);
-  }
-  bind(gl2) {
-    gl2.bindBuffer(gl2.ARRAY_BUFFER, this.vbo);
-    gl2.bindBuffer(gl2.ELEMENT_ARRAY_BUFFER, this.ibo);
-    for (const attr of this.layout.attributes) {
-      gl2.enableVertexAttribArray(attr.location);
-      gl2.vertexAttribPointer(
-        attr.location,
-        attr.size,
-        attr.type,
-        attr.normalized,
-        this.layout.stride,
-        attr.offset
-      );
-    }
-  }
-  draw(gl2) {
-    if (this.primitive === gl2.LINES) {
-      gl2.lineWidth(4);
-    }
-    gl2.drawElements(
-      this.primitive,
-      this.indices.length,
-      gl2.UNSIGNED_INT,
-      0
-    );
-  }
-};
-
 // src/graphics/renderer.ts
 var Renderer = class {
   initialized = false;
@@ -747,27 +539,62 @@ var Renderer = class {
     gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
     for (const entity of scene2.entities) {
       if (entity.renderable) {
-        entity.renderable.draw(scene2.camera);
+        entity.renderable.draw(
+          scene2.camera,
+          scene2.directionalLight,
+          scene2.pointLights
+        );
       }
     }
   }
 };
 
+// src/graphics/light.ts
+function createPointLight(x, y, z, r, g, b, intensity = 1, radius = 10) {
+  return {
+    type: "Point" /* Point */,
+    position: allocVec3(x, y, z),
+    color: allocVec3(r, g, b),
+    intensity,
+    radius
+  };
+}
+function createDirectionalLight(dirX, dirY, dirZ, r, g, b, intensity = 1) {
+  return {
+    type: "Directional" /* Directional */,
+    direction: allocVec3(dirX, dirY, dirZ),
+    color: allocVec3(r, g, b),
+    intensity
+  };
+}
+var MAX_POINT_LIGHTS = 4;
+
 // src/graphics/scene.ts
 var Scene = class {
   camera;
   entities = [];
+  directionalLight;
+  pointLights = [];
   constructor(camera) {
     this.camera = camera;
+    this.directionalLight = createDirectionalLight(-0.5, -1, -0.5, 1, 1, 1, 1);
   }
   add(entity) {
     this.entities.push(entity);
+  }
+  addPointLight(light) {
+    this.pointLights.push(light);
+  }
+  setDirectionalLight(light) {
+    this.directionalLight = light;
   }
 };
 
 // src/graphics/shaderSrc.ts
 var SHADERS = {
   fragment: "#version 300 es\n\nprecision mediump float;\nin vec3 v_normal;\nuniform vec3 u_light_dir;\nuniform vec3 u_base_color;\nout vec4 fragColor;\n\nvoid main() {\n    //basic lambertian diffuse + ambient\n    vec3 n = normalize(v_normal);\n\n    vec3 l = normalize(u_light_dir);\n    float diff = max(dot(n, l), 0.0);\n    float ambient = 0.4;\n    vec3 color = u_base_color * (ambient + diff);\n\n    fragColor = vec4(color, 1.0);\n\n    }",
+  pbrFragment: "#version 300 es\n\nprecision highp float;\n\nin vec3 v_worldPos;\nin vec3 v_normal;\n\n// Material uniforms\nuniform vec3 u_albedo;\nuniform float u_metallic;\nuniform float u_roughness;\nuniform float u_ao;\nuniform vec3 u_emissive;\n\n// Camera\nuniform vec3 u_cameraPos;\n\n// Directional light\nuniform vec3 u_lightDir;\nuniform vec3 u_lightColor;\nuniform float u_lightIntensity;\n\n// Point lights (up to 4)\n#define MAX_POINT_LIGHTS 4\nuniform int u_numPointLights;\nuniform vec3 u_pointLightPositions[MAX_POINT_LIGHTS];\nuniform vec3 u_pointLightColors[MAX_POINT_LIGHTS];\nuniform float u_pointLightIntensities[MAX_POINT_LIGHTS];\nuniform float u_pointLightRadii[MAX_POINT_LIGHTS];\n\nout vec4 fragColor;\n\nconst float PI = 3.14159265359;\n\n// Normal Distribution Function (GGX/Trowbridge-Reitz)\nfloat distributionGGX(vec3 N, vec3 H, float roughness) {\n    float a = roughness * roughness;\n    float a2 = a * a;\n    float NdotH = max(dot(N, H), 0.0);\n    float NdotH2 = NdotH * NdotH;\n\n    float denom = NdotH2 * (a2 - 1.0) + 1.0;\n    denom = PI * denom * denom;\n\n    return a2 / max(denom, 0.0001);\n}\n\n// Geometry Function (Schlick-GGX)\nfloat geometrySchlickGGX(float NdotV, float roughness) {\n    float r = roughness + 1.0;\n    float k = (r * r) / 8.0;\n\n    float denom = NdotV * (1.0 - k) + k;\n    return NdotV / max(denom, 0.0001);\n}\n\n// Geometry Function (Smith's method)\nfloat geometrySmith(vec3 N, vec3 V, vec3 L, float roughness) {\n    float NdotV = max(dot(N, V), 0.0);\n    float NdotL = max(dot(N, L), 0.0);\n    float ggx1 = geometrySchlickGGX(NdotV, roughness);\n    float ggx2 = geometrySchlickGGX(NdotL, roughness);\n    return ggx1 * ggx2;\n}\n\n// Fresnel Equation (Schlick approximation)\nvec3 fresnelSchlick(float cosTheta, vec3 F0) {\n    return F0 + (1.0 - F0) * pow(clamp(1.0 - cosTheta, 0.0, 1.0), 5.0);\n}\n\n// Attenuation for point lights\nfloat calculateAttenuation(float distance, float radius) {\n    float attenuation = 1.0 / (distance * distance + 1.0);\n    float falloff = clamp(1.0 - pow(distance / radius, 4.0), 0.0, 1.0);\n    return attenuation * falloff * falloff;\n}\n\n// Calculate lighting contribution from a single light\nvec3 calculateLight(vec3 N, vec3 V, vec3 L, vec3 radiance, vec3 albedo, float metallic, float roughness) {\n    vec3 H = normalize(V + L);\n    \n    // Calculate F0 (surface reflection at zero incidence)\n    vec3 F0 = vec3(0.04);\n    F0 = mix(F0, albedo, metallic);\n    \n    // Cook-Torrance BRDF\n    float NDF = distributionGGX(N, H, roughness);\n    float G = geometrySmith(N, V, L, roughness);\n    vec3 F = fresnelSchlick(max(dot(H, V), 0.0), F0);\n    \n    // Specular component\n    vec3 numerator = NDF * G * F;\n    float denominator = 4.0 * max(dot(N, V), 0.0) * max(dot(N, L), 0.0) + 0.0001;\n    vec3 specular = numerator / denominator;\n    \n    // Energy conservation\n    vec3 kS = F;\n    vec3 kD = vec3(1.0) - kS;\n    kD *= 1.0 - metallic; // Metals have no diffuse\n    \n    float NdotL = max(dot(N, L), 0.0);\n    \n    return (kD * albedo / PI + specular) * radiance * NdotL;\n}\n\nvoid main() {\n    vec3 N = normalize(v_normal);\n    vec3 V = normalize(u_cameraPos - v_worldPos);\n    \n    vec3 Lo = vec3(0.0);\n    \n    // Directional light contribution\n    vec3 L = normalize(-u_lightDir);\n    vec3 radiance = u_lightColor * u_lightIntensity;\n    Lo += calculateLight(N, V, L, radiance, u_albedo, u_metallic, u_roughness);\n    \n    // Point lights contribution\n    for (int i = 0; i < MAX_POINT_LIGHTS; i++) {\n        if (i >= u_numPointLights) break;\n        \n        vec3 lightVec = u_pointLightPositions[i] - v_worldPos;\n        float distance = length(lightVec);\n        vec3 L_point = normalize(lightVec);\n        \n        float attenuation = calculateAttenuation(distance, u_pointLightRadii[i]);\n        vec3 pointRadiance = u_pointLightColors[i] * u_pointLightIntensities[i] * attenuation;\n        \n        Lo += calculateLight(N, V, L_point, pointRadiance, u_albedo, u_metallic, u_roughness);\n    }\n    \n    // Ambient lighting (simple approximation)\n    vec3 ambient = vec3(0.03) * u_albedo * u_ao;\n    \n    // Final color\n    vec3 color = ambient + Lo + u_emissive;\n    \n    // HDR tone mapping (Reinhard)\n    color = color / (color + vec3(1.0));\n    \n    // Gamma correction\n    color = pow(color, vec3(1.0 / 2.2));\n    \n    fragColor = vec4(color, 1.0);\n}\n",
+  pbrVertex: "#version 300 es\n\nlayout(location = 0) in vec3 a_pos;\nlayout(location = 1) in vec3 a_normal;\n\nuniform mat4 u_model;\nuniform mat4 u_view;\nuniform mat4 u_projection;\n\nout vec3 v_worldPos;\nout vec3 v_normal;\n\nvoid main() {\n    vec4 worldPos = u_model * vec4(a_pos, 1.0);\n    v_worldPos = worldPos.xyz;\n    \n    // Transform normal to world space (assumes uniform scaling or use inverse transpose)\n    v_normal = mat3(u_model) * a_normal;\n    \n    gl_Position = u_projection * u_view * worldPos;\n}\n",
   vertex: "#version 300 es\n\nlayout(location = 0) in vec3 a_pos;\nlayout(location = 1) in vec3 a_normal;\n\n//MVP matrices\nuniform mat4 u_model;\nuniform mat4 u_view;\nuniform mat4 u_projection;\n\nout vec3 v_normal;\n\nvoid main() {\n\n    v_normal = mat3(u_model) * a_normal;\n\n    gl_Position = u_projection * u_view * u_model * vec4(a_pos, 1.0);\n}"
 };
 
@@ -804,23 +631,50 @@ var Shader = class {
   setMat4(name, mat) {
     const loc = gl.getUniformLocation(this.program, name);
     if (loc === null) {
-      throw new Error(`Uniform ${name} not found`);
+      console.warn(`Uniform ${name} not found`);
+      return;
     }
     gl.uniformMatrix4fv(loc, false, mat);
   }
   setVec3(name, vec) {
     const loc = gl.getUniformLocation(this.program, name);
     if (loc === null) {
-      throw new Error(`Uniform ${name} not found`);
+      console.warn(`Uniform ${name} not found`);
+      return;
     }
     gl.uniform3fv(loc, vec);
   }
   setInt(name, value) {
     const loc = gl.getUniformLocation(this.program, name);
     if (loc === null) {
-      throw new Error(`Uniform ${name} not found`);
+      console.warn(`Uniform ${name} not found`);
+      return;
     }
     gl.uniform1i(loc, value);
+  }
+  setFloat(name, value) {
+    const loc = gl.getUniformLocation(this.program, name);
+    if (loc === null) {
+      console.warn(`Uniform ${name} not found`);
+      return;
+    }
+    gl.uniform1f(loc, value);
+  }
+  setVec3Array(name, values) {
+    for (let i = 0; i < values.length; i++) {
+      const loc = gl.getUniformLocation(this.program, `${name}[${i}]`);
+      if (loc !== null) {
+        gl.uniform3fv(loc, values[i]);
+      }
+    }
+  }
+  setFloatArray(name, values) {
+    for (let i = 0; i < values.length; i++) {
+      const loc = gl.getUniformLocation(this.program, `${name}[${i}]`);
+      if (loc !== null) {
+        gl.uniform1f(loc, values[i]);
+      }
+    }
   }
 };
 var program = createProgram(SHADERS.vertex, SHADERS.fragment);
@@ -1296,97 +1150,7 @@ Assets.registerModel("plane", QUAD);
 Assets.registerModel("triangle", TRIANGLE);
 Assets.registerModel("pyramid", PYRAMID);
 Assets.registerShader("default", new Shader(SHADERS.vertex, SHADERS.fragment));
-
-// src/graphics/renderable.ts
-var Renderable = class {
-  mesh;
-  mat;
-  transform;
-  model = allocMat4();
-  temp = allocMat4();
-  view = allocMat4();
-  projection = allocMat4();
-  rotationAxis = allocVec3(0, 1, 0);
-  constructor(mesh, mat, transform) {
-    this.mesh = mesh;
-    this.mat = mat;
-    this.transform = transform;
-  }
-  updateModelMatrix() {
-    identity(this.model);
-    translate(this.model, this.model, this.transform.position);
-    const rotationAngle = this.transform.getRotationAxisAngle(this.rotationAxis);
-    rotate(this.temp, this.model, rotationAngle, this.rotationAxis);
-    scale(this.model, this.temp, this.transform.scaling);
-  }
-  draw(cam) {
-    this.mat.shader.use();
-    this.updateModelMatrix();
-    cam.getViewMatrix(this.view);
-    cam.getProjectionMatrix(this.projection);
-    this.mat.shader.setMat4("u_model", this.model);
-    this.mat.shader.setMat4("u_view", this.view);
-    this.mat.shader.setMat4("u_projection", this.projection);
-    const lightDir = allocVec3(1, 1, -1);
-    const baseColor = allocVec3(this.mat.color.r, this.mat.color.g, this.mat.color.b);
-    this.mat.shader.setVec3("u_light_dir", lightDir);
-    this.mat.shader.setVec3("u_base_color", baseColor);
-    this.mesh.bind(gl);
-    this.mesh.draw(gl);
-  }
-};
-
-// src/graphics/color.ts
-var BLACK = {
-  r: 0,
-  g: 0,
-  b: 0
-};
-var RED = {
-  r: 1,
-  g: 0,
-  b: 0
-};
-var GREEN = {
-  r: 0,
-  g: 1,
-  b: 0
-};
-var BLUE = {
-  r: 0,
-  g: 0,
-  b: 1
-};
-var YELLOW = {
-  r: 1,
-  g: 1,
-  b: 0
-};
-var CYAN = {
-  r: 0,
-  g: 1,
-  b: 1
-};
-var MAGENTA = {
-  r: 1,
-  g: 0,
-  b: 1
-};
-var WHITE = {
-  r: 1,
-  g: 1,
-  b: 1
-};
-var COLORS = {
-  BLACK,
-  RED,
-  GREEN,
-  BLUE,
-  YELLOW,
-  CYAN,
-  MAGENTA,
-  WHITE
-};
+Assets.registerShader("pbr", new Shader(SHADERS.pbrVertex, SHADERS.pbrFragment));
 
 // src/core/clock.ts
 var FixedStepClock = class {
@@ -1516,6 +1280,50 @@ var InputManager = class {
     return false;
   }
 };
+
+// src/physics/aabb.ts
+var AABB = class {
+  constructor(min, max) {
+    this.min = min;
+    this.max = max;
+    this.min = min;
+    this.max = max;
+  }
+  intersects(other) {
+    return this.min[0] <= other.max[0] && this.max[0] >= other.min[0] && (this.min[1] <= other.max[1] && this.max[1] >= other.min[1]) && (this.min[2] <= other.max[2] && this.max[2] >= other.min[2]);
+  }
+};
+function aabbFromLocalToWorld(localAABB, transform) {
+  const corner1 = allocVec3(localAABB.min[0], localAABB.min[1], localAABB.min[2]);
+  const corner2 = allocVec3(localAABB.max[0], localAABB.min[1], localAABB.min[2]);
+  const corner3 = allocVec3(localAABB.min[0], localAABB.max[1], localAABB.min[2]);
+  const corner4 = allocVec3(localAABB.min[0], localAABB.min[1], localAABB.max[2]);
+  const corner5 = allocVec3(localAABB.max[0], localAABB.max[1], localAABB.min[2]);
+  const corner6 = allocVec3(localAABB.max[0], localAABB.min[1], localAABB.max[2]);
+  const corner7 = allocVec3(localAABB.min[0], localAABB.max[1], localAABB.max[2]);
+  const corner8 = allocVec3(localAABB.max[0], localAABB.max[1], localAABB.max[2]);
+  const localCorners = [corner1, corner2, corner3, corner4, corner5, corner6, corner7, corner8];
+  const worldMin = allocVec3(Number.POSITIVE_INFINITY, Number.POSITIVE_INFINITY, Number.POSITIVE_INFINITY);
+  const worldMax = allocVec3(Number.NEGATIVE_INFINITY, Number.NEGATIVE_INFINITY, Number.NEGATIVE_INFINITY);
+  for (const localCorner of localCorners) {
+    const scaledCorner = allocVec3(
+      localCorner[0] * transform.scaling[0],
+      localCorner[1] * transform.scaling[1],
+      localCorner[2] * transform.scaling[2]
+    );
+    const rotatedCorner = allocVec3();
+    transform.rotateVec3(rotatedCorner, scaledCorner);
+    const worldCorner = allocVec3();
+    scaleAndAdd(worldCorner, transform.position, rotatedCorner, 1);
+    worldMin[0] = Math.min(worldMin[0], worldCorner[0]);
+    worldMin[1] = Math.min(worldMin[1], worldCorner[1]);
+    worldMin[2] = Math.min(worldMin[2], worldCorner[2]);
+    worldMax[0] = Math.max(worldMax[0], worldCorner[0]);
+    worldMax[1] = Math.max(worldMax[1], worldCorner[1]);
+    worldMax[2] = Math.max(worldMax[2], worldCorner[2]);
+  }
+  return new AABB(worldMin, worldMax);
+}
 
 // src/physics/manifold.ts
 var CollisionManifold = class {
@@ -1727,21 +1535,264 @@ function simulatePhysics(entities, deltaTime) {
   }
 }
 
-// src/index.ts
-var scene = new Scene(new camera_default(canvas.width / canvas.height, 0.1, 100, Math.PI / 4));
-var renderer = new Renderer();
-var clock = new FixedStepClock(1 / 120);
-var input = new InputManager();
-scene.camera.transform.setTranslation(0, 2.5, 9);
-var defaultShader = Assets.getShader("default");
-var mats = {
-  ground: { shader: defaultShader, color: COLORS.GREEN },
-  wall: { shader: defaultShader, color: COLORS.BLUE },
-  bunny: { shader: defaultShader, color: COLORS.YELLOW },
-  horse: { shader: defaultShader, color: COLORS.MAGENTA },
-  cubeA: { shader: defaultShader, color: COLORS.CYAN },
-  cubeB: { shader: defaultShader, color: COLORS.RED }
+// src/graphics/pbrMaterial.ts
+function createPBRMaterial(shader, options = {}) {
+  return {
+    shader,
+    albedo: allocVec3(
+      options.albedo?.[0] ?? 1,
+      options.albedo?.[1] ?? 1,
+      options.albedo?.[2] ?? 1
+    ),
+    metallic: options.metallic ?? 0,
+    roughness: options.roughness ?? 0.5,
+    ao: options.ao ?? 1,
+    emissive: allocVec3(
+      options.emissive?.[0] ?? 0,
+      options.emissive?.[1] ?? 0,
+      options.emissive?.[2] ?? 0
+    )
+  };
+}
+function isPBRMaterial(mat) {
+  return typeof mat === "object" && mat !== null && "albedo" in mat && "metallic" in mat && "roughness" in mat;
+}
+
+// src/graphics/renderable.ts
+var Renderable = class {
+  mesh;
+  mat;
+  transform;
+  model = allocMat4();
+  temp = allocMat4();
+  view = allocMat4();
+  projection = allocMat4();
+  rotationAxis = allocVec3(0, 1, 0);
+  constructor(mesh, mat, transform) {
+    this.mesh = mesh;
+    this.mat = mat;
+    this.transform = transform;
+  }
+  updateModelMatrix() {
+    identity(this.model);
+    translate(this.model, this.model, this.transform.position);
+    const rotationAngle = this.transform.getRotationAxisAngle(this.rotationAxis);
+    rotate(this.temp, this.model, rotationAngle, this.rotationAxis);
+    scale(this.model, this.temp, this.transform.scaling);
+  }
+  draw(cam, dirLight, pointLights) {
+    this.mat.shader.use();
+    this.updateModelMatrix();
+    cam.getViewMatrix(this.view);
+    cam.getProjectionMatrix(this.projection);
+    this.mat.shader.setMat4("u_model", this.model);
+    this.mat.shader.setMat4("u_view", this.view);
+    this.mat.shader.setMat4("u_projection", this.projection);
+    if (isPBRMaterial(this.mat)) {
+      this.mat.shader.setVec3("u_albedo", this.mat.albedo);
+      this.mat.shader.setFloat("u_metallic", this.mat.metallic);
+      this.mat.shader.setFloat("u_roughness", this.mat.roughness);
+      this.mat.shader.setFloat("u_ao", this.mat.ao);
+      this.mat.shader.setVec3("u_emissive", this.mat.emissive);
+      this.mat.shader.setVec3("u_cameraPos", cam.transform.position);
+      if (dirLight) {
+        this.mat.shader.setVec3("u_lightDir", dirLight.direction);
+        this.mat.shader.setVec3("u_lightColor", dirLight.color);
+        this.mat.shader.setFloat("u_lightIntensity", dirLight.intensity);
+      }
+      const lights = pointLights ?? [];
+      const numLights = Math.min(lights.length, MAX_POINT_LIGHTS);
+      this.mat.shader.setInt("u_numPointLights", numLights);
+      const positions = [];
+      const colors = [];
+      const intensities = [];
+      const radii = [];
+      for (let i = 0; i < numLights; i++) {
+        positions.push(lights[i].position);
+        colors.push(lights[i].color);
+        intensities.push(lights[i].intensity);
+        radii.push(lights[i].radius);
+      }
+      this.mat.shader.setVec3Array("u_pointLightPositions", positions);
+      this.mat.shader.setVec3Array("u_pointLightColors", colors);
+      this.mat.shader.setFloatArray("u_pointLightIntensities", intensities);
+      this.mat.shader.setFloatArray("u_pointLightRadii", radii);
+    } else {
+      const lightDir = allocVec3(1, 1, -1);
+      const baseColor = allocVec3(this.mat.color.r, this.mat.color.g, this.mat.color.b);
+      this.mat.shader.setVec3("u_light_dir", lightDir);
+      this.mat.shader.setVec3("u_base_color", baseColor);
+    }
+    this.mesh.bind(gl);
+    this.mesh.draw(gl);
+  }
 };
+
+// src/graphics/mesh.ts
+var VertexLayout = class {
+  stride;
+  attributes;
+  constructor(stride, attributes) {
+    this.stride = stride;
+    this.attributes = attributes;
+  }
+};
+var pos3norm3 = new VertexLayout(24, [
+  { location: 0, size: 3, type: gl.FLOAT, normalized: false, offset: 0 },
+  { location: 1, size: 3, type: gl.FLOAT, normalized: false, offset: 12 }
+]);
+function createAABBWireframeData(aabb) {
+  const minX = aabb.min[0];
+  const minY = aabb.min[1];
+  const minZ = aabb.min[2];
+  const maxX = aabb.max[0];
+  const maxY = aabb.max[1];
+  const maxZ = aabb.max[2];
+  const vertices = [
+    minX,
+    minY,
+    minZ,
+    maxX,
+    minY,
+    minZ,
+    maxX,
+    maxY,
+    minZ,
+    minX,
+    maxY,
+    minZ,
+    minX,
+    minY,
+    maxZ,
+    maxX,
+    minY,
+    maxZ,
+    maxX,
+    maxY,
+    maxZ,
+    minX,
+    maxY,
+    maxZ
+  ];
+  const indices = [
+    0,
+    1,
+    1,
+    2,
+    2,
+    3,
+    3,
+    0,
+    4,
+    5,
+    5,
+    6,
+    6,
+    7,
+    7,
+    4,
+    0,
+    4,
+    1,
+    5,
+    2,
+    6,
+    3,
+    7
+  ];
+  return { vertices, indices };
+}
+function createAABBFromVertices(vertices) {
+  let minX = Number.POSITIVE_INFINITY;
+  let minY = Number.POSITIVE_INFINITY;
+  let minZ = Number.POSITIVE_INFINITY;
+  let maxX = Number.NEGATIVE_INFINITY;
+  let maxY = Number.NEGATIVE_INFINITY;
+  let maxZ = Number.NEGATIVE_INFINITY;
+  let x, y, z;
+  for (let i = 0; i < vertices.length; i += 3) {
+    x = vertices[i];
+    y = vertices[i + 1];
+    z = vertices[i + 2];
+    if (x < minX) minX = x;
+    if (y < minY) minY = y;
+    if (z < minZ) minZ = z;
+    if (x > maxX) maxX = x;
+    if (y > maxY) maxY = y;
+    if (z > maxZ) maxZ = z;
+  }
+  const min = allocVec3(minX, minY, minZ);
+  const max = allocVec3(maxX, maxY, maxZ);
+  return new AABB(min, max);
+}
+var Mesh = class _Mesh {
+  vertexData = new Float32Array();
+  indices = new Uint32Array();
+  vbo;
+  ibo;
+  layout;
+  vertexCount = 0;
+  aabb;
+  primitive;
+  constructor(data, gl2, primitive = gl2.TRIANGLES) {
+    this.indices = new Uint32Array(data.indices);
+    this.layout = pos3norm3;
+    this.vertexCount = data.vertices.length / 3;
+    const normals = data.normals ?? new Array(this.vertexCount * 3).fill(0);
+    if (normals.length !== this.vertexCount * 3) {
+      throw new Error("Invalid normals length for mesh");
+    }
+    this.primitive = primitive;
+    this.vertexData = new Float32Array(this.vertexCount * 6);
+    for (let i = 0; i < this.vertexCount; i++) {
+      this.vertexData[i * 6] = data.vertices[i * 3];
+      this.vertexData[i * 6 + 1] = data.vertices[i * 3 + 1];
+      this.vertexData[i * 6 + 2] = data.vertices[i * 3 + 2];
+      this.vertexData[i * 6 + 3] = normals[i * 3];
+      this.vertexData[i * 6 + 4] = normals[i * 3 + 1];
+      this.vertexData[i * 6 + 5] = normals[i * 3 + 2];
+    }
+    this.aabb = createAABBFromVertices(data.vertices);
+    this.vbo = gl2.createBuffer();
+    this.ibo = gl2.createBuffer();
+    gl2.bindBuffer(gl2.ELEMENT_ARRAY_BUFFER, this.ibo);
+    gl2.bufferData(gl2.ELEMENT_ARRAY_BUFFER, this.indices, gl2.STATIC_DRAW);
+    gl2.bindBuffer(gl2.ARRAY_BUFFER, this.vbo);
+    gl2.bufferData(gl2.ARRAY_BUFFER, this.vertexData, gl2.STATIC_DRAW);
+  }
+  static createAABBWireframe(aabb, gl2) {
+    const wireframeData = createAABBWireframeData(aabb);
+    return new _Mesh(wireframeData, gl2, gl2.LINES);
+  }
+  bind(gl2) {
+    gl2.bindBuffer(gl2.ARRAY_BUFFER, this.vbo);
+    gl2.bindBuffer(gl2.ELEMENT_ARRAY_BUFFER, this.ibo);
+    for (const attr of this.layout.attributes) {
+      gl2.enableVertexAttribArray(attr.location);
+      gl2.vertexAttribPointer(
+        attr.location,
+        attr.size,
+        attr.type,
+        attr.normalized,
+        this.layout.stride,
+        attr.offset
+      );
+    }
+  }
+  draw(gl2) {
+    if (this.primitive === gl2.LINES) {
+      gl2.lineWidth(4);
+    }
+    gl2.drawElements(
+      this.primitive,
+      this.indices.length,
+      gl2.UNSIGNED_INT,
+      0
+    );
+  }
+};
+
+// src/factories/entityFactory.ts
 function makeRigidbody(type, mass, restitution, velocityX = 0, velocityY = 0, velocityZ = 0) {
   return {
     type,
@@ -1751,111 +1802,80 @@ function makeRigidbody(type, mass, restitution, velocityX = 0, velocityY = 0, ve
     acceleration: allocVec3(0, 0, 0)
   };
 }
-function createEntity(modelName, material, tx, ty, tz, sx, sy, sz, rigidbody, showDebug) {
-  const mesh = new Mesh(Assets.getModel(modelName), gl);
-  const transform = new Transform().setTranslation(tx, ty, tz).setScale(sx, sy, sz);
-  const renderable = new Renderable(mesh, material, transform);
+function createEntity(options) {
+  const mesh = new Mesh(Assets.getModel(options.mesh), gl);
+  const transform = new Transform().setTranslation(options.position[0], options.position[1], options.position[2]).setScale(options.scale[0], options.scale[1], options.scale[2]);
+  const renderable = new Renderable(mesh, options.material, transform);
+  const physicsCollider = options.collider ? {
+    aabb: mesh.aabb,
+    showDebug: options.colliderDebug ?? false
+  } : null;
   return {
     transform,
     renderable,
-    physicsCollider: {
-      aabb: mesh.aabb,
-      showDebug
-    },
-    rigidbody
+    physicsCollider,
+    rigidbody: options.rigidbody
   };
 }
-var ground = createEntity(
-  "cube",
-  mats.ground,
-  0,
-  -2.2,
-  0,
-  10,
-  0.3,
-  10,
-  makeRigidbody("Static" /* Static */, 1, 0.2),
-  false
-);
-var leftWall = createEntity(
-  "cube",
-  mats.wall,
-  -4.5,
-  -0.3,
-  0,
-  0.35,
-  2.5,
-  10,
-  makeRigidbody("Static" /* Static */, 1, 0.2),
-  false
-);
-var rightWall = createEntity(
-  "cube",
-  mats.wall,
-  4.5,
-  -0.3,
-  0,
-  0.35,
-  2.5,
-  10,
-  makeRigidbody("Static" /* Static */, 1, 0.2),
-  false
-);
-var bunny = createEntity(
-  "bunny",
-  mats.bunny,
-  -2,
-  1.8,
-  0,
-  7.1,
-  7.1,
-  7.1,
-  makeRigidbody("Dynamic" /* Dynamic */, 2, 0.35, 1.1, 0, 0),
-  true
-);
-var horse = createEntity(
-  "horse",
-  mats.horse,
-  2,
-  2.2,
-  0,
-  5.9,
-  5.9,
-  5.9,
-  makeRigidbody("Dynamic" /* Dynamic */, 3, 0.2, -0.9, 0, 0),
-  true
-);
-var cubeTop = createEntity(
-  "cube",
-  mats.cubeA,
-  0,
-  2.8,
-  0,
-  0.55,
-  0.55,
-  0.55,
-  makeRigidbody("Dynamic" /* Dynamic */, 1, 0.6, 0.2, 0, 0),
-  true
-);
-var cubeBottom = createEntity(
-  "cube",
-  mats.cubeB,
-  0.2,
-  1.4,
-  0,
-  0.75,
-  0.75,
-  0.75,
-  makeRigidbody("Dynamic" /* Dynamic */, 1.6, 0.1, -0.1, 0, 0),
-  true
-);
+
+// src/index.ts
+var scene = new Scene(new camera_default(canvas.width / canvas.height, 0.1, 100, Math.PI / 4));
+var renderer = new Renderer();
+var clock = new FixedStepClock(1 / 120);
+var input = new InputManager();
+scene.camera.transform.setTranslation(0, 2.5, 9);
+scene.setDirectionalLight(createDirectionalLight(0.5, -1, 0.3, 1, 0.95, 0.9, 1.5));
+scene.addPointLight(createPointLight(0, 3, 2, 1, 0.8, 0.6, 4, 15));
+scene.addPointLight(createPointLight(-3, 1, 0, 0.4, 0.6, 1, 2, 10));
+var pbrShader = Assets.getShader("pbr");
+var mats = {
+  ground: createPBRMaterial(pbrShader, { albedo: [0.2, 0.5, 0.2], metallic: 0, roughness: 0.8 }),
+  wall: createPBRMaterial(pbrShader, { albedo: [0.3, 0.4, 0.7], metallic: 0.1, roughness: 0.6 }),
+  bunny: createPBRMaterial(pbrShader, { albedo: [0.9, 0.75, 0.3], metallic: 0.7, roughness: 0.25 }),
+  horse: createPBRMaterial(pbrShader, { albedo: [0.8, 0.3, 0.5], metallic: 0.5, roughness: 0.4 }),
+  cubeA: createPBRMaterial(pbrShader, { albedo: [0.2, 0.7, 0.8], metallic: 0.9, roughness: 0.1 }),
+  cubeB: createPBRMaterial(pbrShader, { albedo: [0.9, 0.2, 0.2], metallic: 0, roughness: 0.5 })
+};
+var ground = createEntity({
+  mesh: "cube",
+  material: mats.ground,
+  position: [0, -2.2, 0],
+  scale: [10, 0.3, 10],
+  rigidbody: makeRigidbody("Static" /* Static */, 1, 0.2),
+  collider: true,
+  colliderDebug: false
+});
+var leftWall = createEntity({
+  mesh: "cube",
+  material: mats.wall,
+  position: [-4.5, -0.3, 0],
+  scale: [0.35, 2.5, 10],
+  rigidbody: makeRigidbody("Static" /* Static */, 1, 0.2),
+  collider: true,
+  colliderDebug: false
+});
+var rightWall = createEntity({
+  mesh: "cube",
+  material: mats.wall,
+  position: [4.5, -0.3, 0],
+  scale: [0.35, 2.5, 10],
+  rigidbody: makeRigidbody("Static" /* Static */, 1, 0.2),
+  collider: true,
+  colliderDebug: false
+});
+var bunny = createEntity({
+  mesh: "bunny",
+  material: mats.bunny,
+  position: [-2, 1.8, 0],
+  scale: [7.1, 7.1, 7.1],
+  rigidbody: makeRigidbody("Dynamic" /* Dynamic */, 2, 0.35, 1.1, 0, 0),
+  collider: true,
+  colliderDebug: true
+});
 scene.add(ground);
 scene.add(leftWall);
 scene.add(rightWall);
 scene.add(bunny);
-scene.add(horse);
-scene.add(cubeTop);
-scene.add(cubeBottom);
 function fixedUpdate(deltaTime) {
   input.update();
   scene.camera.processInput(input, deltaTime);

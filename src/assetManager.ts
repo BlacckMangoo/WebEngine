@@ -68,3 +68,4 @@ Assets.registerModel("pyramid", PYRAMID);
 
 // Register shaders
 Assets.registerShader("default", new Shader(SHADERS.vertex, SHADERS.fragment));
+Assets.registerShader("pbr", new Shader(SHADERS.pbrVertex, SHADERS.pbrFragment));

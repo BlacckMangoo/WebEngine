@@ -20,7 +20,11 @@ export class Renderer {
 
         for (const entity of scene.entities) {
             if (entity.renderable) {
-                entity.renderable.draw(scene.camera);
+                entity.renderable.draw(
+                    scene.camera,
+                    scene.directionalLight,
+                    scene.pointLights
+                );
             }
         }
     }

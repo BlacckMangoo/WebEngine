@@ -6,8 +6,6 @@
 import {allocVec2, setVec2, Vec2} from "@/math/vec2";
 import {KeyCode} from "@/src/inputSystem/keycodes";
 
-type inputEventType = "Keydown" | "Keyup" | "Mousedown" | "Mouseup" | "Mousemove";
-
 
 type InputEventType =
     | {
@@ -27,9 +25,7 @@ type InputEventType =
     timestamp: number;
 };
 
-interface Command {
-    execute(): void;
-}
+
 
 class EventQueue {
     private queue: InputEventType[] = [];
