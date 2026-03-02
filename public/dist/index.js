@@ -1407,7 +1407,7 @@ function createAABBManifold(entityA, entityB, worldAABB, worldBABB) {
 var gravity = allocVec3(0, -0.81, 0);
 var POSITIONAL_SLOP = 1e-3;
 var POSITIONAL_PERCENT = 0.8;
-var SOLVER_ITERATIONS = 6;
+var SOLVER_ITERATIONS = 20;
 function hasColliderAABB(entity) {
   return Boolean(entity.physicsCollider?.aabb);
 }

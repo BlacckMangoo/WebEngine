@@ -9,7 +9,7 @@ import { CollisionManifold, ContactPoint, createAABBManifold } from "./manifold"
 const gravity = allocVec3(0, -0.81, 0); // gravity vector in negative y direction
 const POSITIONAL_SLOP = 0.001;
 const POSITIONAL_PERCENT = 0.8;
-const SOLVER_ITERATIONS = 6;
+const SOLVER_ITERATIONS = 20;
 
 
 export interface Rigidbody {
