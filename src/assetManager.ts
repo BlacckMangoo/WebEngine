@@ -10,6 +10,7 @@ import {
   PYRAMID,
   createSphere,
 } from '@/src/graphics/primitives'
+import { Material } from './graphics/renderable'
 
 class AssetManager {
   private static instance: AssetManager
@@ -56,6 +57,13 @@ class AssetManager {
       throw new Error(`Model "${name}" not found in registry.`)
     }
     return model
+  }
+
+  getDefaultMaterial(): Material {
+    return {
+      shader: this.getShader('default'),
+      color: { r: 0.8, g: 0.7, b: 0.2 },
+    }
   }
 }
 

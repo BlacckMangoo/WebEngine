@@ -27,6 +27,23 @@ export interface PhysicsCollider {
   showDebug: boolean
 }
 
+export function makeRigidbody(
+  type: RigidbodyType,
+  mass: number,
+  restitution: number,
+  velocityX = 0,
+  velocityY = 0,
+  velocityZ = 0
+): Rigidbody {
+  return {
+    type,
+    mass,
+    restitution,
+    velocity: allocVec3(velocityX, velocityY, velocityZ),
+    acceleration: allocVec3(0, 0, 0),
+  }
+}
+
 function hasColliderAABB(
   entity: Entity
 ): entity is Entity & { physicsCollider: PhysicsCollider & { aabb: AABB } } {
@@ -187,12 +204,9 @@ function integrate(entity: Entity, deltaTime: number) {
     return
   }
 
-  // apply gravity
-  //acceleration = gravity
   entity.rigidbody.acceleration[0] = gravity[0]
   entity.rigidbody.acceleration[1] = gravity[1]
   entity.rigidbody.acceleration[2] = gravity[2]
-  // means : velocity += acceleration * deltaTime ;
 
   scaleAndAdd(
     entity.rigidbody.velocity,
@@ -200,7 +214,7 @@ function integrate(entity: Entity, deltaTime: number) {
     entity.rigidbody.acceleration,
     deltaTime
   )
-  //  position += velocity * deltaTime
+ 
   scaleAndAdd(
     entity.transform.position,
     entity.transform.position,
@@ -210,7 +224,6 @@ function integrate(entity: Entity, deltaTime: number) {
 }
 
 export function simulatePhysics(entities: Entity[], deltaTime: number) {
-  // simple physics simulation : apply gravity and check for collisions
 
   for (const entity of entities) {
     integrate(entity, deltaTime)

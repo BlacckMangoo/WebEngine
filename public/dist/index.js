@@ -312,66 +312,13 @@ var CUBE = {
   ]
 };
 var QUAD = {
-  vertices: [
-    -1,
-    -1,
-    0,
-    1,
-    -1,
-    0,
-    1,
-    1,
-    0,
-    -1,
-    1,
-    0
-  ],
-  normals: [
-    0,
-    0,
-    1,
-    0,
-    0,
-    1,
-    0,
-    0,
-    1,
-    0,
-    0,
-    1
-  ],
-  indices: [
-    0,
-    1,
-    2,
-    0,
-    2,
-    3
-  ]
+  vertices: [-1, -1, 0, 1, -1, 0, 1, 1, 0, -1, 1, 0],
+  normals: [0, 0, 1, 0, 0, 1, 0, 0, 1, 0, 0, 1],
+  indices: [0, 1, 2, 0, 2, 3]
 };
 var TRIANGLE = {
-  vertices: [
-    0,
-    0.5,
-    0,
-    -0.5,
-    -0.5,
-    0,
-    0.5,
-    -0.5,
-    0
-  ],
-  normals: [
-    0,
-    0,
-    1,
-    0,
-    0,
-    1,
-    0,
-    0,
-    1
-  ],
+  vertices: [0, 0.5, 0, -0.5, -0.5, 0, 0.5, -0.5, 0],
+  normals: [0, 0, 1, 0, 0, 1, 0, 0, 1],
   indices: [0, 1, 2]
 };
 var PYRAMID = {
@@ -497,26 +444,7 @@ var PYRAMID = {
     0.7071,
     0
   ],
-  indices: [
-    0,
-    1,
-    2,
-    3,
-    4,
-    5,
-    6,
-    7,
-    8,
-    9,
-    10,
-    11,
-    12,
-    13,
-    14,
-    15,
-    16,
-    17
-  ]
+  indices: [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17]
 };
 function createSphere(radius = 0.5, subdivisions = 3) {
   const t = (1 + Math.sqrt(5)) / 2;
@@ -618,18 +546,18 @@ var AssetManager = class _AssetManager {
     return _AssetManager.instance;
   }
   // Shader management
-  registerShader(name, shader2) {
+  registerShader(name, shader) {
     if (this.shaders.has(name)) {
       console.warn(`Shader "${name}" already registered, overwriting.`);
     }
-    this.shaders.set(name, shader2);
+    this.shaders.set(name, shader);
   }
   getShader(name) {
-    const shader2 = this.shaders.get(name);
-    if (!shader2) {
+    const shader = this.shaders.get(name);
+    if (!shader) {
       throw new Error(`Shader "${name}" not found in registry.`);
     }
-    return shader2;
+    return shader;
   }
   // Model management
   registerModel(name, model) {
@@ -644,6 +572,12 @@ var AssetManager = class _AssetManager {
       throw new Error(`Model "${name}" not found in registry.`);
     }
     return model;
+  }
+  getDefaultMaterial() {
+    return {
+      shader: this.getShader("default"),
+      color: { r: 0.8, g: 0.7, b: 0.2 }
+    };
   }
 };
 var Assets = AssetManager.getInstance();
@@ -704,21 +638,70 @@ var AABB = class {
     this.max = max;
   }
   intersects(other) {
-    return this.min[0] <= other.max[0] && this.max[0] >= other.min[0] && (this.min[1] <= other.max[1] && this.max[1] >= other.min[1]) && (this.min[2] <= other.max[2] && this.max[2] >= other.min[2]);
+    return this.min[0] <= other.max[0] && this.max[0] >= other.min[0] && this.min[1] <= other.max[1] && this.max[1] >= other.min[1] && this.min[2] <= other.max[2] && this.max[2] >= other.min[2];
   }
 };
 function aabbFromLocalToWorld(localAABB, transform) {
-  const corner1 = allocVec3(localAABB.min[0], localAABB.min[1], localAABB.min[2]);
-  const corner2 = allocVec3(localAABB.max[0], localAABB.min[1], localAABB.min[2]);
-  const corner3 = allocVec3(localAABB.min[0], localAABB.max[1], localAABB.min[2]);
-  const corner4 = allocVec3(localAABB.min[0], localAABB.min[1], localAABB.max[2]);
-  const corner5 = allocVec3(localAABB.max[0], localAABB.max[1], localAABB.min[2]);
-  const corner6 = allocVec3(localAABB.max[0], localAABB.min[1], localAABB.max[2]);
-  const corner7 = allocVec3(localAABB.min[0], localAABB.max[1], localAABB.max[2]);
-  const corner8 = allocVec3(localAABB.max[0], localAABB.max[1], localAABB.max[2]);
-  const localCorners = [corner1, corner2, corner3, corner4, corner5, corner6, corner7, corner8];
-  const worldMin = allocVec3(Number.POSITIVE_INFINITY, Number.POSITIVE_INFINITY, Number.POSITIVE_INFINITY);
-  const worldMax = allocVec3(Number.NEGATIVE_INFINITY, Number.NEGATIVE_INFINITY, Number.NEGATIVE_INFINITY);
+  const corner1 = allocVec3(
+    localAABB.min[0],
+    localAABB.min[1],
+    localAABB.min[2]
+  );
+  const corner2 = allocVec3(
+    localAABB.max[0],
+    localAABB.min[1],
+    localAABB.min[2]
+  );
+  const corner3 = allocVec3(
+    localAABB.min[0],
+    localAABB.max[1],
+    localAABB.min[2]
+  );
+  const corner4 = allocVec3(
+    localAABB.min[0],
+    localAABB.min[1],
+    localAABB.max[2]
+  );
+  const corner5 = allocVec3(
+    localAABB.max[0],
+    localAABB.max[1],
+    localAABB.min[2]
+  );
+  const corner6 = allocVec3(
+    localAABB.max[0],
+    localAABB.min[1],
+    localAABB.max[2]
+  );
+  const corner7 = allocVec3(
+    localAABB.min[0],
+    localAABB.max[1],
+    localAABB.max[2]
+  );
+  const corner8 = allocVec3(
+    localAABB.max[0],
+    localAABB.max[1],
+    localAABB.max[2]
+  );
+  const localCorners = [
+    corner1,
+    corner2,
+    corner3,
+    corner4,
+    corner5,
+    corner6,
+    corner7,
+    corner8
+  ];
+  const worldMin = allocVec3(
+    Number.POSITIVE_INFINITY,
+    Number.POSITIVE_INFINITY,
+    Number.POSITIVE_INFINITY
+  );
+  const worldMax = allocVec3(
+    Number.NEGATIVE_INFINITY,
+    Number.NEGATIVE_INFINITY,
+    Number.NEGATIVE_INFINITY
+  );
   for (const localCorner of localCorners) {
     const scaledCorner = allocVec3(
       localCorner[0] * transform.scaling[0],
@@ -812,8 +795,15 @@ function createAABBManifold(entityA, entityB, worldAABB, worldBABB) {
   if (!axis) {
     return null;
   }
-  const manifold = new CollisionManifold(entityA, entityB, axis.normal, axis.penetration);
-  manifold.contactPoints.push(buildContactPoint(worldAABB, worldBABB, axis.normal, axis.penetration));
+  const manifold = new CollisionManifold(
+    entityA,
+    entityB,
+    axis.normal,
+    axis.penetration
+  );
+  manifold.contactPoints.push(
+    buildContactPoint(worldAABB, worldBABB, axis.normal, axis.penetration)
+  );
   return manifold;
 }
 
@@ -822,11 +812,22 @@ var gravity = allocVec3(0, -0.81, 0);
 var POSITIONAL_SLOP = 1e-3;
 var POSITIONAL_PERCENT = 0.8;
 var SOLVER_ITERATIONS = 20;
+function makeRigidbody(type, mass, restitution, velocityX = 0, velocityY = 0, velocityZ = 0) {
+  return {
+    type,
+    mass,
+    restitution,
+    velocity: allocVec3(velocityX, velocityY, velocityZ),
+    acceleration: allocVec3(0, 0, 0)
+  };
+}
 function hasColliderAABB(entity) {
   return Boolean(entity.physicsCollider?.aabb);
 }
 function isDynamicBody(entity) {
-  return Boolean(entity.rigidbody && entity.rigidbody.type === "Dynamic" /* Dynamic */);
+  return Boolean(
+    entity.rigidbody && entity.rigidbody.type === "Dynamic" /* Dynamic */
+  );
 }
 function getInvMass(entity) {
   if (!isDynamicBody(entity) || entity.rigidbody.mass <= 0) {
@@ -914,7 +915,12 @@ function resolveManifold(manifold) {
   if (!contact) {
     return;
   }
-  applyPositionalCorrection(manifold.entityA, manifold.entityB, manifold.normal, manifold.penetration);
+  applyPositionalCorrection(
+    manifold.entityA,
+    manifold.entityB,
+    manifold.normal,
+    manifold.penetration
+  );
   applyContactImpulse(manifold.entityA, manifold.entityB, contact);
 }
 function integrate(entity, deltaTime) {
@@ -924,8 +930,18 @@ function integrate(entity, deltaTime) {
   entity.rigidbody.acceleration[0] = gravity[0];
   entity.rigidbody.acceleration[1] = gravity[1];
   entity.rigidbody.acceleration[2] = gravity[2];
-  scaleAndAdd(entity.rigidbody.velocity, entity.rigidbody.velocity, entity.rigidbody.acceleration, deltaTime);
-  scaleAndAdd(entity.transform.position, entity.transform.position, entity.rigidbody.velocity, deltaTime);
+  scaleAndAdd(
+    entity.rigidbody.velocity,
+    entity.rigidbody.velocity,
+    entity.rigidbody.acceleration,
+    deltaTime
+  );
+  scaleAndAdd(
+    entity.transform.position,
+    entity.transform.position,
+    entity.rigidbody.velocity,
+    deltaTime
+  );
 }
 function simulatePhysics(entities, deltaTime) {
   for (const entity of entities) {
@@ -948,6 +964,320 @@ function simulatePhysics(entities, deltaTime) {
     }
   }
 }
+
+// src/graphics/light.ts
+function createDirectionalLight(direction, color, intensity = 1) {
+  return {
+    direction,
+    color,
+    intensity
+  };
+}
+
+// src/graphics/mesh.ts
+var VertexLayout = class {
+  stride;
+  attributes;
+  constructor(stride, attributes) {
+    this.stride = stride;
+    this.attributes = attributes;
+  }
+};
+var pos3norm3 = new VertexLayout(24, [
+  { location: 0, size: 3, type: gl.FLOAT, normalized: false, offset: 0 },
+  { location: 1, size: 3, type: gl.FLOAT, normalized: false, offset: 12 }
+]);
+function createAABBWireframeData(aabb) {
+  const minX = aabb.min[0];
+  const minY = aabb.min[1];
+  const minZ = aabb.min[2];
+  const maxX = aabb.max[0];
+  const maxY = aabb.max[1];
+  const maxZ = aabb.max[2];
+  const vertices = [
+    minX,
+    minY,
+    minZ,
+    maxX,
+    minY,
+    minZ,
+    maxX,
+    maxY,
+    minZ,
+    minX,
+    maxY,
+    minZ,
+    minX,
+    minY,
+    maxZ,
+    maxX,
+    minY,
+    maxZ,
+    maxX,
+    maxY,
+    maxZ,
+    minX,
+    maxY,
+    maxZ
+  ];
+  const indices = [
+    0,
+    1,
+    1,
+    2,
+    2,
+    3,
+    3,
+    0,
+    4,
+    5,
+    5,
+    6,
+    6,
+    7,
+    7,
+    4,
+    0,
+    4,
+    1,
+    5,
+    2,
+    6,
+    3,
+    7
+  ];
+  return { vertices, indices };
+}
+function createAABBFromVertices(vertices) {
+  let minX = Number.POSITIVE_INFINITY;
+  let minY = Number.POSITIVE_INFINITY;
+  let minZ = Number.POSITIVE_INFINITY;
+  let maxX = Number.NEGATIVE_INFINITY;
+  let maxY = Number.NEGATIVE_INFINITY;
+  let maxZ = Number.NEGATIVE_INFINITY;
+  let x, y, z;
+  for (let i = 0; i < vertices.length; i += 3) {
+    x = vertices[i];
+    y = vertices[i + 1];
+    z = vertices[i + 2];
+    if (x < minX) minX = x;
+    if (y < minY) minY = y;
+    if (z < minZ) minZ = z;
+    if (x > maxX) maxX = x;
+    if (y > maxY) maxY = y;
+    if (z > maxZ) maxZ = z;
+  }
+  const min = allocVec3(minX, minY, minZ);
+  const max = allocVec3(maxX, maxY, maxZ);
+  return new AABB(min, max);
+}
+var Mesh = class _Mesh {
+  vertexData = new Float32Array();
+  indices = new Uint32Array();
+  vbo;
+  ibo;
+  layout;
+  vertexCount = 0;
+  aabb;
+  primitive;
+  constructor(data, gl2, primitive = gl2.TRIANGLES) {
+    this.indices = new Uint32Array(data.indices);
+    this.layout = pos3norm3;
+    this.vertexCount = data.vertices.length / 3;
+    const normals = data.normals ?? new Array(this.vertexCount * 3).fill(0);
+    if (normals.length !== this.vertexCount * 3) {
+      throw new Error("Invalid normals length for mesh");
+    }
+    this.primitive = primitive;
+    this.vertexData = new Float32Array(this.vertexCount * 6);
+    for (let i = 0; i < this.vertexCount; i++) {
+      this.vertexData[i * 6] = data.vertices[i * 3];
+      this.vertexData[i * 6 + 1] = data.vertices[i * 3 + 1];
+      this.vertexData[i * 6 + 2] = data.vertices[i * 3 + 2];
+      this.vertexData[i * 6 + 3] = normals[i * 3];
+      this.vertexData[i * 6 + 4] = normals[i * 3 + 1];
+      this.vertexData[i * 6 + 5] = normals[i * 3 + 2];
+    }
+    this.aabb = createAABBFromVertices(data.vertices);
+    this.vbo = gl2.createBuffer();
+    this.ibo = gl2.createBuffer();
+    gl2.bindBuffer(gl2.ELEMENT_ARRAY_BUFFER, this.ibo);
+    gl2.bufferData(gl2.ELEMENT_ARRAY_BUFFER, this.indices, gl2.STATIC_DRAW);
+    gl2.bindBuffer(gl2.ARRAY_BUFFER, this.vbo);
+    gl2.bufferData(gl2.ARRAY_BUFFER, this.vertexData, gl2.STATIC_DRAW);
+  }
+  static createAABBWireframe(aabb, gl2) {
+    const wireframeData = createAABBWireframeData(aabb);
+    return new _Mesh(wireframeData, gl2, gl2.LINES);
+  }
+  bind(gl2) {
+    gl2.bindBuffer(gl2.ARRAY_BUFFER, this.vbo);
+    gl2.bindBuffer(gl2.ELEMENT_ARRAY_BUFFER, this.ibo);
+    for (const attr of this.layout.attributes) {
+      gl2.enableVertexAttribArray(attr.location);
+      gl2.vertexAttribPointer(
+        attr.location,
+        attr.size,
+        attr.type,
+        attr.normalized,
+        this.layout.stride,
+        attr.offset
+      );
+    }
+  }
+  draw(gl2) {
+    if (this.primitive === gl2.LINES) {
+      gl2.lineWidth(4);
+    }
+    gl2.drawElements(this.primitive, this.indices.length, gl2.UNSIGNED_INT, 0);
+  }
+};
+
+// math/quaternion.ts
+function allocQuaternion(x = 0, y = 0, z = 0, w = 1) {
+  return {
+    imaginary: allocVec3(x, y, z),
+    scalar: w
+  };
+}
+function multiplyQuaternions(res, q1, q2) {
+  const w1 = q1.scalar;
+  const x1 = q1.imaginary[0];
+  const y1 = q1.imaginary[1];
+  const z1 = q1.imaginary[2];
+  const w2 = q2.scalar;
+  const x2 = q2.imaginary[0];
+  const y2 = q2.imaginary[1];
+  const z2 = q2.imaginary[2];
+  const w = w1 * w2 - x1 * x2 - y1 * y2 - z1 * z2;
+  const x = w1 * x2 + x1 * w2 + y1 * z2 - z1 * y2;
+  const y = w1 * y2 - x1 * z2 + y1 * w2 + z1 * x2;
+  const z = w1 * z2 + x1 * y2 - y1 * x2 + z1 * w2;
+  res.imaginary[0] = x;
+  res.imaginary[1] = y;
+  res.imaginary[2] = z;
+  res.scalar = w;
+}
+function norm(q) {
+  const x = q.imaginary[0];
+  const y = q.imaginary[1];
+  const z = q.imaginary[2];
+  const w = q.scalar;
+  return Math.sqrt(x * x + y * y + z * z + w * w);
+}
+function quaternionFromAxisAngle(axis, angle) {
+  const len = Math.hypot(axis[0], axis[1], axis[2]);
+  const nx = axis[0] / len;
+  const ny = axis[1] / len;
+  const nz = axis[2] / len;
+  const half = angle / 2;
+  const s = Math.sin(half);
+  return {
+    imaginary: allocVec3(nx * s, ny * s, nz * s),
+    scalar: Math.cos(half)
+  };
+}
+function rotateVec3ByQuaternion(out, v, q) {
+  const x = q.imaginary[0], y = q.imaginary[1], z = q.imaginary[2], w = q.scalar;
+  const vx = v[0], vy = v[1], vz = v[2];
+  const tx = 2 * (y * vz - z * vy);
+  const ty = 2 * (z * vx - x * vz);
+  const tz = 2 * (x * vy - y * vx);
+  out[0] = vx + w * tx + (y * tz - z * ty);
+  out[1] = vy + w * ty + (z * tx - x * tz);
+  out[2] = vz + w * tz + (x * ty - y * tx);
+}
+function normalizeQuaternion(out, q) {
+  const length = norm(q);
+  if (length <= 1e-8) {
+    out.imaginary[0] = 0;
+    out.imaginary[1] = 0;
+    out.imaginary[2] = 0;
+    out.scalar = 1;
+    return;
+  }
+  const inv = 1 / length;
+  out.imaginary[0] = q.imaginary[0] * inv;
+  out.imaginary[1] = q.imaginary[1] * inv;
+  out.imaginary[2] = q.imaginary[2] * inv;
+  out.scalar = q.scalar * inv;
+}
+function composeQuaternion(out, lhs, rhs) {
+  multiplyQuaternions(out, lhs, rhs);
+  normalizeQuaternion(out, out);
+}
+
+// src/graphics/transform.ts
+var Transform = class {
+  position = allocVec3(0, 0, 0);
+  scaling = allocVec3(1, 1, 1);
+  rotation = allocQuaternion(0, 0, 0, 1);
+  // (x, y, z) imaginary part, w scalar part -> rotation axis is (x, y, z) and angle is 2 * acos(w)
+  revision = 0;
+  get version() {
+    return this.revision;
+  }
+  markChanged() {
+    this.revision++;
+  }
+  setTranslation(x, y, z) {
+    this.position[0] = x;
+    this.position[1] = y;
+    this.position[2] = z;
+    this.markChanged();
+    return this;
+  }
+  translateBy(dx, dy, dz) {
+    this.position[0] += dx;
+    this.position[1] += dy;
+    this.position[2] += dz;
+    this.markChanged();
+    return this;
+  }
+  setScale(x, y, z) {
+    this.scaling[0] = x;
+    this.scaling[1] = y;
+    this.scaling[2] = z;
+    this.markChanged();
+    return this;
+  }
+  setRotation(angle, axisX, axisY, axisZ) {
+    const axis = allocVec3(axisX, axisY, axisZ);
+    const rotation = quaternionFromAxisAngle(axis, angle);
+    this.rotation.imaginary[0] = rotation.imaginary[0];
+    this.rotation.imaginary[1] = rotation.imaginary[1];
+    this.rotation.imaginary[2] = rotation.imaginary[2];
+    this.rotation.scalar = rotation.scalar;
+    normalizeQuaternion(this.rotation, this.rotation);
+    this.markChanged();
+    return this;
+  }
+  rotateByAxisAngle(angle, axisX, axisY, axisZ) {
+    const delta = quaternionFromAxisAngle(allocVec3(axisX, axisY, axisZ), angle);
+    composeQuaternion(this.rotation, delta, this.rotation);
+    this.markChanged();
+    return this;
+  }
+  rotateVec3(out, v) {
+    rotateVec3ByQuaternion(out, v, this.rotation);
+  }
+  getRotationAxisAngle(outAxis) {
+    normalizeQuaternion(this.rotation, this.rotation);
+    const w = Math.max(-1, Math.min(1, this.rotation.scalar));
+    const angle = 2 * Math.acos(w);
+    const s = Math.sqrt(1 - w * w);
+    if (s < 1e-6) {
+      outAxis[0] = 0;
+      outAxis[1] = 1;
+      outAxis[2] = 0;
+      return 0;
+    }
+    outAxis[0] = this.rotation.imaginary[0] / s;
+    outAxis[1] = this.rotation.imaginary[1] / s;
+    outAxis[2] = this.rotation.imaginary[2] / s;
+    return angle;
+  }
+};
 
 // math/mat4.ts
 function create2() {
@@ -1158,358 +1488,20 @@ var Renderable = class {
     this.mat.shader.setMat4("u_model", this.model);
     this.mat.shader.setMat4("u_view", this.view);
     this.mat.shader.setMat4("u_projection", this.projection);
-    const baseColor = allocVec3(this.mat.color.r, this.mat.color.g, this.mat.color.b);
-    this.mat.shader.setVec3("u_light_dir", dirLight ? dirLight.direction : allocVec3(1, 1, 1));
+    const baseColor = allocVec3(
+      this.mat.color.r,
+      this.mat.color.g,
+      this.mat.color.b
+    );
+    this.mat.shader.setVec3(
+      "u_light_dir",
+      dirLight ? dirLight.direction : allocVec3(1, 1, 1)
+    );
     this.mat.shader.setVec3("u_base_color", baseColor);
     this.mesh.bind(gl);
     this.mesh.draw(gl);
   }
 };
-
-// src/graphics/mesh.ts
-var VertexLayout = class {
-  stride;
-  attributes;
-  constructor(stride, attributes) {
-    this.stride = stride;
-    this.attributes = attributes;
-  }
-};
-var pos3norm3 = new VertexLayout(24, [
-  { location: 0, size: 3, type: gl.FLOAT, normalized: false, offset: 0 },
-  { location: 1, size: 3, type: gl.FLOAT, normalized: false, offset: 12 }
-]);
-function createAABBWireframeData(aabb) {
-  const minX = aabb.min[0];
-  const minY = aabb.min[1];
-  const minZ = aabb.min[2];
-  const maxX = aabb.max[0];
-  const maxY = aabb.max[1];
-  const maxZ = aabb.max[2];
-  const vertices = [
-    minX,
-    minY,
-    minZ,
-    maxX,
-    minY,
-    minZ,
-    maxX,
-    maxY,
-    minZ,
-    minX,
-    maxY,
-    minZ,
-    minX,
-    minY,
-    maxZ,
-    maxX,
-    minY,
-    maxZ,
-    maxX,
-    maxY,
-    maxZ,
-    minX,
-    maxY,
-    maxZ
-  ];
-  const indices = [
-    0,
-    1,
-    1,
-    2,
-    2,
-    3,
-    3,
-    0,
-    4,
-    5,
-    5,
-    6,
-    6,
-    7,
-    7,
-    4,
-    0,
-    4,
-    1,
-    5,
-    2,
-    6,
-    3,
-    7
-  ];
-  return { vertices, indices };
-}
-function createAABBFromVertices(vertices) {
-  let minX = Number.POSITIVE_INFINITY;
-  let minY = Number.POSITIVE_INFINITY;
-  let minZ = Number.POSITIVE_INFINITY;
-  let maxX = Number.NEGATIVE_INFINITY;
-  let maxY = Number.NEGATIVE_INFINITY;
-  let maxZ = Number.NEGATIVE_INFINITY;
-  let x, y, z;
-  for (let i = 0; i < vertices.length; i += 3) {
-    x = vertices[i];
-    y = vertices[i + 1];
-    z = vertices[i + 2];
-    if (x < minX) minX = x;
-    if (y < minY) minY = y;
-    if (z < minZ) minZ = z;
-    if (x > maxX) maxX = x;
-    if (y > maxY) maxY = y;
-    if (z > maxZ) maxZ = z;
-  }
-  const min = allocVec3(minX, minY, minZ);
-  const max = allocVec3(maxX, maxY, maxZ);
-  return new AABB(min, max);
-}
-var Mesh = class _Mesh {
-  vertexData = new Float32Array();
-  indices = new Uint32Array();
-  vbo;
-  ibo;
-  layout;
-  vertexCount = 0;
-  aabb;
-  primitive;
-  constructor(data, gl2, primitive = gl2.TRIANGLES) {
-    this.indices = new Uint32Array(data.indices);
-    this.layout = pos3norm3;
-    this.vertexCount = data.vertices.length / 3;
-    const normals = data.normals ?? new Array(this.vertexCount * 3).fill(0);
-    if (normals.length !== this.vertexCount * 3) {
-      throw new Error("Invalid normals length for mesh");
-    }
-    this.primitive = primitive;
-    this.vertexData = new Float32Array(this.vertexCount * 6);
-    for (let i = 0; i < this.vertexCount; i++) {
-      this.vertexData[i * 6] = data.vertices[i * 3];
-      this.vertexData[i * 6 + 1] = data.vertices[i * 3 + 1];
-      this.vertexData[i * 6 + 2] = data.vertices[i * 3 + 2];
-      this.vertexData[i * 6 + 3] = normals[i * 3];
-      this.vertexData[i * 6 + 4] = normals[i * 3 + 1];
-      this.vertexData[i * 6 + 5] = normals[i * 3 + 2];
-    }
-    this.aabb = createAABBFromVertices(data.vertices);
-    this.vbo = gl2.createBuffer();
-    this.ibo = gl2.createBuffer();
-    gl2.bindBuffer(gl2.ELEMENT_ARRAY_BUFFER, this.ibo);
-    gl2.bufferData(gl2.ELEMENT_ARRAY_BUFFER, this.indices, gl2.STATIC_DRAW);
-    gl2.bindBuffer(gl2.ARRAY_BUFFER, this.vbo);
-    gl2.bufferData(gl2.ARRAY_BUFFER, this.vertexData, gl2.STATIC_DRAW);
-  }
-  static createAABBWireframe(aabb, gl2) {
-    const wireframeData = createAABBWireframeData(aabb);
-    return new _Mesh(wireframeData, gl2, gl2.LINES);
-  }
-  bind(gl2) {
-    gl2.bindBuffer(gl2.ARRAY_BUFFER, this.vbo);
-    gl2.bindBuffer(gl2.ELEMENT_ARRAY_BUFFER, this.ibo);
-    for (const attr of this.layout.attributes) {
-      gl2.enableVertexAttribArray(attr.location);
-      gl2.vertexAttribPointer(
-        attr.location,
-        attr.size,
-        attr.type,
-        attr.normalized,
-        this.layout.stride,
-        attr.offset
-      );
-    }
-  }
-  draw(gl2) {
-    if (this.primitive === gl2.LINES) {
-      gl2.lineWidth(4);
-    }
-    gl2.drawElements(
-      this.primitive,
-      this.indices.length,
-      gl2.UNSIGNED_INT,
-      0
-    );
-  }
-};
-
-// math/quaternion.ts
-function allocQuaternion(x = 0, y = 0, z = 0, w = 1) {
-  return {
-    imaginary: allocVec3(x, y, z),
-    scalar: w
-  };
-}
-function multiplyQuaternions(res, q1, q2) {
-  const w1 = q1.scalar;
-  const x1 = q1.imaginary[0];
-  const y1 = q1.imaginary[1];
-  const z1 = q1.imaginary[2];
-  const w2 = q2.scalar;
-  const x2 = q2.imaginary[0];
-  const y2 = q2.imaginary[1];
-  const z2 = q2.imaginary[2];
-  const w = w1 * w2 - x1 * x2 - y1 * y2 - z1 * z2;
-  const x = w1 * x2 + x1 * w2 + y1 * z2 - z1 * y2;
-  const y = w1 * y2 - x1 * z2 + y1 * w2 + z1 * x2;
-  const z = w1 * z2 + x1 * y2 - y1 * x2 + z1 * w2;
-  res.imaginary[0] = x;
-  res.imaginary[1] = y;
-  res.imaginary[2] = z;
-  res.scalar = w;
-}
-function norm(q) {
-  const x = q.imaginary[0];
-  const y = q.imaginary[1];
-  const z = q.imaginary[2];
-  const w = q.scalar;
-  return Math.sqrt(x * x + y * y + z * z + w * w);
-}
-function quaternionFromAxisAngle(axis, angle) {
-  const len = Math.hypot(axis[0], axis[1], axis[2]);
-  const nx = axis[0] / len;
-  const ny = axis[1] / len;
-  const nz = axis[2] / len;
-  const half = angle / 2;
-  const s = Math.sin(half);
-  return {
-    imaginary: allocVec3(nx * s, ny * s, nz * s),
-    scalar: Math.cos(half)
-  };
-}
-function rotateVec3ByQuaternion(out, v, q) {
-  const x = q.imaginary[0], y = q.imaginary[1], z = q.imaginary[2], w = q.scalar;
-  const vx = v[0], vy = v[1], vz = v[2];
-  const tx = 2 * (y * vz - z * vy);
-  const ty = 2 * (z * vx - x * vz);
-  const tz = 2 * (x * vy - y * vx);
-  out[0] = vx + w * tx + (y * tz - z * ty);
-  out[1] = vy + w * ty + (z * tx - x * tz);
-  out[2] = vz + w * tz + (x * ty - y * tx);
-}
-function normalizeQuaternion(out, q) {
-  const length = norm(q);
-  if (length <= 1e-8) {
-    out.imaginary[0] = 0;
-    out.imaginary[1] = 0;
-    out.imaginary[2] = 0;
-    out.scalar = 1;
-    return;
-  }
-  const inv = 1 / length;
-  out.imaginary[0] = q.imaginary[0] * inv;
-  out.imaginary[1] = q.imaginary[1] * inv;
-  out.imaginary[2] = q.imaginary[2] * inv;
-  out.scalar = q.scalar * inv;
-}
-function composeQuaternion(out, lhs, rhs) {
-  multiplyQuaternions(out, lhs, rhs);
-  normalizeQuaternion(out, out);
-}
-
-// src/graphics/transform.ts
-var Transform = class {
-  position = allocVec3(0, 0, 0);
-  scaling = allocVec3(1, 1, 1);
-  rotation = allocQuaternion(0, 0, 0, 1);
-  // (x, y, z) imaginary part, w scalar part -> rotation axis is (x, y, z) and angle is 2 * acos(w)
-  revision = 0;
-  get version() {
-    return this.revision;
-  }
-  markChanged() {
-    this.revision++;
-  }
-  setTranslation(x, y, z) {
-    this.position[0] = x;
-    this.position[1] = y;
-    this.position[2] = z;
-    this.markChanged();
-    return this;
-  }
-  translateBy(dx, dy, dz) {
-    this.position[0] += dx;
-    this.position[1] += dy;
-    this.position[2] += dz;
-    this.markChanged();
-    return this;
-  }
-  setScale(x, y, z) {
-    this.scaling[0] = x;
-    this.scaling[1] = y;
-    this.scaling[2] = z;
-    this.markChanged();
-    return this;
-  }
-  setRotation(angle, axisX, axisY, axisZ) {
-    const axis = allocVec3(axisX, axisY, axisZ);
-    const rotation = quaternionFromAxisAngle(axis, angle);
-    this.rotation.imaginary[0] = rotation.imaginary[0];
-    this.rotation.imaginary[1] = rotation.imaginary[1];
-    this.rotation.imaginary[2] = rotation.imaginary[2];
-    this.rotation.scalar = rotation.scalar;
-    normalizeQuaternion(this.rotation, this.rotation);
-    this.markChanged();
-    return this;
-  }
-  rotateByAxisAngle(angle, axisX, axisY, axisZ) {
-    const delta = quaternionFromAxisAngle(allocVec3(axisX, axisY, axisZ), angle);
-    composeQuaternion(this.rotation, delta, this.rotation);
-    this.markChanged();
-    return this;
-  }
-  rotateVec3(out, v) {
-    rotateVec3ByQuaternion(out, v, this.rotation);
-  }
-  getRotationAxisAngle(outAxis) {
-    normalizeQuaternion(this.rotation, this.rotation);
-    const w = Math.max(-1, Math.min(1, this.rotation.scalar));
-    const angle = 2 * Math.acos(w);
-    const s = Math.sqrt(1 - w * w);
-    if (s < 1e-6) {
-      outAxis[0] = 0;
-      outAxis[1] = 1;
-      outAxis[2] = 0;
-      return 0;
-    }
-    outAxis[0] = this.rotation.imaginary[0] / s;
-    outAxis[1] = this.rotation.imaginary[1] / s;
-    outAxis[2] = this.rotation.imaginary[2] / s;
-    return angle;
-  }
-};
-
-// src/graphics/entityMaker.ts
-function makeRigidbody(type, mass, restitution, velocityX = 0, velocityY = 0, velocityZ = 0) {
-  return {
-    type,
-    mass,
-    restitution,
-    velocity: allocVec3(velocityX, velocityY, velocityZ),
-    acceleration: allocVec3(0, 0, 0)
-  };
-}
-function createEntity(options) {
-  const mesh = new Mesh(Assets.getModel(options.mesh), gl);
-  const transform = new Transform().setTranslation(options.position[0], options.position[1], options.position[2]).setScale(options.scale[0], options.scale[1], options.scale[2]);
-  const renderable = new Renderable(mesh, options.material, transform);
-  const physicsCollider = options.collider ? {
-    aabb: mesh.aabb,
-    showDebug: options.colliderDebug ?? false
-  } : null;
-  return {
-    transform,
-    renderable,
-    physicsCollider,
-    rigidbody: options.rigidbody
-  };
-}
-
-// src/graphics/light.ts
-function createDirectionalLight(direction, color, intensity = 1) {
-  return {
-    direction,
-    color,
-    intensity
-  };
-}
 
 // src/graphics/scene.ts
 var Scene = class {
@@ -1518,13 +1510,26 @@ var Scene = class {
   directionalLight;
   constructor(camera) {
     this.camera = camera;
-    this.directionalLight = createDirectionalLight(allocVec3(-0.5, -1, -0.5), allocVec3(1, 1, 1), 1);
+    this.directionalLight = createDirectionalLight(
+      allocVec3(-0.5, 1, -0.5),
+      { r: 1, g: 1, b: 1 },
+      1
+    );
+  }
+  createEntity(options) {
+    const mesh = new Mesh(Assets.getModel(options.mesh), gl);
+    const transform = new Transform().setTranslation(options.position[0], options.position[1], options.position[2]).setScale(options.scale[0], options.scale[1], options.scale[2]);
+    const renderable = new Renderable(mesh, options.material ?? Assets.getDefaultMaterial(), transform);
+    const physicsCollider = options.collider ? { aabb: mesh.aabb, showDebug: options.colliderDebug ?? false } : null;
+    const entity = { transform, renderable, physicsCollider, rigidbody: options.rigidbody };
+    this.entities.push(entity);
+    return entity;
   }
   add(entity) {
     this.entities.push(entity);
   }
-  setDirectionalLight(light) {
-    this.directionalLight = light;
+  setDirectionalLight(light2) {
+    this.directionalLight = light2;
   }
 };
 
@@ -1640,16 +1645,36 @@ var Camera = class {
     const speed = this.moveSpeed * deltaTime;
     this.deriveBasisVectors();
     if (input.isKeyPressed(KeyCode.W)) {
-      scaleAndAdd(this.transform.position, this.transform.position, this.forward, speed);
+      scaleAndAdd(
+        this.transform.position,
+        this.transform.position,
+        this.forward,
+        speed
+      );
     }
     if (input.isKeyPressed(KeyCode.S)) {
-      scaleAndAdd(this.transform.position, this.transform.position, this.forward, -speed);
+      scaleAndAdd(
+        this.transform.position,
+        this.transform.position,
+        this.forward,
+        -speed
+      );
     }
     if (input.isKeyPressed(KeyCode.A)) {
-      scaleAndAdd(this.transform.position, this.transform.position, this.right, -speed);
+      scaleAndAdd(
+        this.transform.position,
+        this.transform.position,
+        this.right,
+        -speed
+      );
     }
     if (input.isKeyPressed(KeyCode.D)) {
-      scaleAndAdd(this.transform.position, this.transform.position, this.right, speed);
+      scaleAndAdd(
+        this.transform.position,
+        this.transform.position,
+        this.right,
+        speed
+      );
     }
     if (input.isKeyPressed(KeyCode.ArrowUp)) {
       translateY(this.transform.position, speed);
@@ -1686,16 +1711,13 @@ var Renderer = class {
     gl.clearColor(0.1, 0.1, 0.1, 1);
     this.initialized = true;
   }
-  render(scene3) {
+  render(scene2) {
     this.init();
     gl.viewport(0, 0, canvas.width, canvas.height);
     gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
-    for (const entity of scene3.entities) {
+    for (const entity of scene2.entities) {
       if (entity.renderable) {
-        entity.renderable.draw(
-          scene3.camera,
-          scene3.directionalLight
-        );
+        entity.renderable.draw(scene2.camera, scene2.directionalLight);
       }
     }
   }
@@ -1838,10 +1860,12 @@ var Engine = class _Engine {
   input = new InputManager();
   currScene;
   createScene(camera) {
-    return new Scene(camera || new camera_default(canvas.width / canvas.height, 0.1, 100, Math.PI / 4));
+    return new Scene(
+      camera || new camera_default(canvas.width / canvas.height, 0.1, 100, Math.PI / 4)
+    );
   }
-  setScene(scene3) {
-    this.currScene = scene3;
+  setScene(scene2) {
+    this.currScene = scene2;
   }
   static getInstance() {
     if (!_Engine.instance) {
@@ -1868,35 +1892,27 @@ var engine_default = Engine;
 // src/index.ts
 var engine = engine_default.getInstance();
 var scene = engine.createScene();
-var scene2 = engine.createScene();
+var light = createDirectionalLight(allocVec3(0.5, 1, 0.3), { r: 1, g: 1, b: 1 }, 1.5);
 scene.camera.transform.setTranslation(0, 2.5, 9);
-scene.setDirectionalLight(createDirectionalLight(allocVec3(0.5, 1, 0.3), allocVec3(1, 0.95, 0.9), 1.5));
-var shader = Assets.getShader("default");
-var defaultMaterial = {
-  shader,
-  color: { r: 0.8, g: 0.2, b: 0.2 }
-};
-var ground = createEntity({
+scene.setDirectionalLight(light);
+scene.createEntity({
   mesh: "cube",
-  material: defaultMaterial,
+  material: Assets.getDefaultMaterial(),
   position: [0, -2.2, 0],
   scale: [10, 0.3, 10],
   rigidbody: makeRigidbody("Static" /* Static */, 1, 0.5),
   collider: true,
   colliderDebug: false
 });
-var sphere = createEntity({
+scene.createEntity({
   mesh: "sphere",
-  material: defaultMaterial,
+  material: Assets.getDefaultMaterial(),
   position: [0, 4, 0],
   scale: [2, 2, 2],
   rigidbody: makeRigidbody("Dynamic" /* Dynamic */, 1, 0.6),
   collider: true,
   colliderDebug: true
 });
-scene.add(ground);
-scene.add(sphere);
-scene2.add(ground);
 engine.setScene(scene);
 requestAnimationFrame(() => engine.gameloop());
 //# sourceMappingURL=index.js.map
