@@ -10,14 +10,16 @@
   },
   "devDependencies": {
     "@types/node": "^25.2.1",
-    "@types/pg": "^8.18.0",
     "esbuild": "^0.27.3",
     "ts-node": "^10.9.2",
     "tsx": "^4.21.0",
     "typescript": "^5.9.3"
   },
   "private": true,
-  "dependencies": {
-    "pg": "^8.19.0"
+  "prettier": {
+    "semi": false,
+    "singleQuote": true,
+    "trailingComma": "es5",
+    "printWidth": 80
   }
 }

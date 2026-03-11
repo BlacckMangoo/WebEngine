@@ -1,71 +1,77 @@
-import {Shader} from "@/src/graphics/shader";
-import {ModelData} from "@/src/graphics/mesh";
-import horse from "@public/assets/models/horse.json";
-import bunny from "@public/assets/models/stanfordbunny.json";
-import {SHADERS} from "@/src/graphics/shaderSrc";
-import {CUBE, QUAD, TRIANGLE, PYRAMID} from "@/src/graphics/primitives";
+import { Shader } from '@/src/graphics/shader'
+import { ModelData } from '@/src/graphics/mesh'
+import horse from '@public/assets/models/horse.json'
+import bunny from '@public/assets/models/stanfordbunny.json'
+import { SHADERS } from '@/src/graphics/shaderSrc'
+import {
+  CUBE,
+  QUAD,
+  TRIANGLE,
+  PYRAMID,
+  createSphere,
+} from '@/src/graphics/primitives'
 
 class AssetManager {
-    private static instance: AssetManager;
+  private static instance: AssetManager
 
-    private shaders: Map<string, Shader> = new Map();
-    private models: Map<string, ModelData> = new Map();
+  private shaders: Map<string, Shader> = new Map()
+  private models: Map<string, ModelData> = new Map()
 
-    private constructor() {}
+  private constructor() {}
 
-    static getInstance(): AssetManager {
-        if (AssetManager.instance == null) {
-            AssetManager.instance = new AssetManager();
-        }
-        return AssetManager.instance;
+  static getInstance(): AssetManager {
+    if (AssetManager.instance == null) {
+      AssetManager.instance = new AssetManager()
     }
+    return AssetManager.instance
+  }
 
-    // Shader management
-    registerShader(name: string, shader: Shader): void {
-        if (this.shaders.has(name)) {
-            console.warn(`Shader "${name}" already registered, overwriting.`);
-        }
-        this.shaders.set(name, shader);
+  // Shader management
+  registerShader(name: string, shader: Shader): void {
+    if (this.shaders.has(name)) {
+      console.warn(`Shader "${name}" already registered, overwriting.`)
     }
+    this.shaders.set(name, shader)
+  }
 
-    getShader(name: string): Shader {
-        const shader = this.shaders.get(name);
-        if (!shader) {
-            throw new Error(`Shader "${name}" not found in registry.`);
-        }
-        return shader;
+  getShader(name: string): Shader {
+    const shader = this.shaders.get(name)
+    if (!shader) {
+      throw new Error(`Shader "${name}" not found in registry.`)
     }
+    return shader
+  }
 
-    // Model management
-    registerModel(name: string, model: ModelData): void {
-        if (this.models.has(name)) {
-            console.warn(`Model "${name}" already registered.`);
-        }
-        this.models.set(name, model);
+  // Model management
+  registerModel(name: string, model: ModelData): void {
+    if (this.models.has(name)) {
+      console.warn(`Model "${name}" already registered.`)
     }
+    this.models.set(name, model)
+  }
 
-    getModel(name: string): ModelData {
-        const model = this.models.get(name);
-        if (!model) {
-            throw new Error(`Model "${name}" not found in registry.`);
-        }
-        return model;
+  getModel(name: string): ModelData {
+    const model = this.models.get(name)
+    if (!model) {
+      throw new Error(`Model "${name}" not found in registry.`)
     }
+    return model
+  }
 }
 
 //  singleton instance
-export const Assets = AssetManager.getInstance();
+export const Assets = AssetManager.getInstance()
 
 // Register models from files
-Assets.registerModel("horse", horse as ModelData);
-Assets.registerModel("bunny", bunny as ModelData);
+Assets.registerModel('horse', horse as ModelData)
+Assets.registerModel('bunny', bunny as ModelData)
 
 // Register primitive models
-Assets.registerModel("cube", CUBE);
-Assets.registerModel("plane", QUAD);
-Assets.registerModel("triangle", TRIANGLE);
-Assets.registerModel("pyramid", PYRAMID);
+Assets.registerModel('cube', CUBE)
+Assets.registerModel('plane', QUAD)
+Assets.registerModel('triangle', TRIANGLE)
+Assets.registerModel('pyramid', PYRAMID)
+Assets.registerModel('sphere', createSphere(0.5, 3))
 
 // Register shaders
-Assets.registerShader("default", new Shader(SHADERS.vertex, SHADERS.fragment));
-Assets.registerShader("pbr", new Shader(SHADERS.pbrVertex, SHADERS.pbrFragment));
+Assets.registerShader('default', new Shader(SHADERS.vertex, SHADERS.fragment))

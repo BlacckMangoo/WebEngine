@@ -11,591 +11,10 @@ function getGL(canvas2) {
 }
 var gl = getGL(canvas);
 
-// math/vec3.ts
-function create() {
-  return new Float32Array(3);
-}
-function allocVec3(a = 0, b = 0, c = 0) {
-  const out = create();
-  out[0] = a;
-  out[1] = b;
-  out[2] = c;
-  return out;
-}
-function translateY(out, delta) {
-  out[1] += delta;
-  return out;
-}
-function cross(out, a, b) {
-  const ax = a[0], ay = a[1], az = a[2];
-  const bx = b[0], by = b[1], bz = b[2];
-  out[0] = ay * bz - az * by;
-  out[1] = az * bx - ax * bz;
-  out[2] = ax * by - ay * bx;
-}
-function normalize(out, a) {
-  const x = a[0], y = a[1], z = a[2];
-  let len = x * x + y * y + z * z;
-  if (len > 0) {
-    len = 1 / Math.sqrt(len);
-    out[0] = x * len;
-    out[1] = y * len;
-    out[2] = z * len;
-  }
-}
-function scaleAndAdd(out, a, b, scale2) {
-  out[0] = a[0] + b[0] * scale2;
-  out[1] = a[1] + b[1] * scale2;
-  out[2] = a[2] + b[2] * scale2;
-  return out;
-}
-
-// math/mat4.ts
-function create2() {
-  return new Float32Array(16);
-}
-function allocMat4() {
-  const out = create2();
-  out[0] = 1;
-  out[1] = 0;
-  out[2] = 0;
-  out[3] = 0;
-  out[4] = 0;
-  out[5] = 1;
-  out[6] = 0;
-  out[7] = 0;
-  out[8] = 0;
-  out[9] = 0;
-  out[10] = 1;
-  out[11] = 0;
-  out[12] = 0;
-  out[13] = 0;
-  out[14] = 0;
-  out[15] = 1;
-  return out;
-}
-function identity(out) {
-  out[0] = 1;
-  out[1] = 0;
-  out[2] = 0;
-  out[3] = 0;
-  out[4] = 0;
-  out[5] = 1;
-  out[6] = 0;
-  out[7] = 0;
-  out[8] = 0;
-  out[9] = 0;
-  out[10] = 1;
-  out[11] = 0;
-  out[12] = 0;
-  out[13] = 0;
-  out[14] = 0;
-  out[15] = 1;
-  return out;
-}
-function lookAt(out, eye, center, up) {
-  const z = allocVec3(
-    eye[0] - center[0],
-    eye[1] - center[1],
-    eye[2] - center[2]
-  );
-  normalize(z, z);
-  const x = allocVec3();
-  cross(x, up, z);
-  normalize(x, x);
-  const y = allocVec3();
-  cross(y, z, x);
-  out[0] = x[0];
-  out[1] = y[0];
-  out[2] = z[0];
-  out[3] = 0;
-  out[4] = x[1];
-  out[5] = y[1];
-  out[6] = z[1];
-  out[7] = 0;
-  out[8] = x[2];
-  out[9] = y[2];
-  out[10] = z[2];
-  out[11] = 0;
-  out[12] = -(x[0] * eye[0] + x[1] * eye[1] + x[2] * eye[2]);
-  out[13] = -(y[0] * eye[0] + y[1] * eye[1] + y[2] * eye[2]);
-  out[14] = -(z[0] * eye[0] + z[1] * eye[1] + z[2] * eye[2]);
-  out[15] = 1;
-  return out;
-}
-function perspective(out, fovy, aspect, near, far) {
-  const f = 1 / Math.tan(fovy / 2);
-  const nf = 1 / (near - far);
-  out[0] = f / aspect;
-  out[1] = 0;
-  out[2] = 0;
-  out[3] = 0;
-  out[4] = 0;
-  out[5] = f;
-  out[6] = 0;
-  out[7] = 0;
-  out[8] = 0;
-  out[9] = 0;
-  out[10] = (far + near) * nf;
-  out[11] = -1;
-  out[12] = 0;
-  out[13] = 0;
-  out[14] = 2 * far * near * nf;
-  out[15] = 0;
-  return out;
-}
-function translate(out, a, v) {
-  const x = v[0], y = v[1], z = v[2];
-  const a00 = a[0], a01 = a[1], a02 = a[2], a03 = a[3];
-  const a10 = a[4], a11 = a[5], a12 = a[6], a13 = a[7];
-  const a20 = a[8], a21 = a[9], a22 = a[10], a23 = a[11];
-  out[0] = a00;
-  out[1] = a01;
-  out[2] = a02;
-  out[3] = a03;
-  out[4] = a10;
-  out[5] = a11;
-  out[6] = a12;
-  out[7] = a13;
-  out[8] = a20;
-  out[9] = a21;
-  out[10] = a22;
-  out[11] = a23;
-  out[12] = a00 * x + a10 * y + a20 * z + a[12];
-  out[13] = a01 * x + a11 * y + a21 * z + a[13];
-  out[14] = a02 * x + a12 * y + a22 * z + a[14];
-  out[15] = a03 * x + a13 * y + a23 * z + a[15];
-  return out;
-}
-function scale(out, a, v) {
-  const x = v[0], y = v[1], z = v[2];
-  out[0] = a[0] * x;
-  out[1] = a[1] * x;
-  out[2] = a[2] * x;
-  out[3] = a[3] * x;
-  out[4] = a[4] * y;
-  out[5] = a[5] * y;
-  out[6] = a[6] * y;
-  out[7] = a[7] * y;
-  out[8] = a[8] * z;
-  out[9] = a[9] * z;
-  out[10] = a[10] * z;
-  out[11] = a[11] * z;
-  out[12] = a[12];
-  out[13] = a[13];
-  out[14] = a[14];
-  out[15] = a[15];
-  return out;
-}
-function rotate(out, a, rad, axis) {
-  const x = axis[0], y = axis[1], z = axis[2];
-  const len = Math.hypot(x, y, z);
-  if (len < 1e-6) return null;
-  const s = Math.sin(rad);
-  const c = Math.cos(rad);
-  const t = 1 - c;
-  const a00 = a[0], a01 = a[1], a02 = a[2], a03 = a[3];
-  const a10 = a[4], a11 = a[5], a12 = a[6], a13 = a[7];
-  const a20 = a[8], a21 = a[9], a22 = a[10], a23 = a[11];
-  const rlen = 1 / len;
-  const nx = x * rlen;
-  const ny = y * rlen;
-  const nz = z * rlen;
-  const b00 = nx * nx * t + c;
-  const b01 = ny * nx * t + nz * s;
-  const b02 = nz * nx * t - ny * s;
-  const b10 = nx * ny * t - nz * s;
-  const b11 = ny * ny * t + c;
-  const b12 = nz * ny * t + nx * s;
-  const b20 = nx * nz * t + ny * s;
-  const b21 = ny * nz * t - nx * s;
-  const b22 = nz * nz * t + c;
-  out[0] = a00 * b00 + a10 * b01 + a20 * b02;
-  out[1] = a01 * b00 + a11 * b01 + a21 * b02;
-  out[2] = a02 * b00 + a12 * b01 + a22 * b02;
-  out[3] = a03 * b00 + a13 * b01 + a23 * b02;
-  out[4] = a00 * b10 + a10 * b11 + a20 * b12;
-  out[5] = a01 * b10 + a11 * b11 + a21 * b12;
-  out[6] = a02 * b10 + a12 * b11 + a22 * b12;
-  out[7] = a03 * b10 + a13 * b11 + a23 * b12;
-  out[8] = a00 * b20 + a10 * b21 + a20 * b22;
-  out[9] = a01 * b20 + a11 * b21 + a21 * b22;
-  out[10] = a02 * b20 + a12 * b21 + a22 * b22;
-  out[11] = a03 * b20 + a13 * b21 + a23 * b22;
-  out[12] = a[12];
-  out[13] = a[13];
-  out[14] = a[14];
-  out[15] = a[15];
-  return out;
-}
-
-// src/inputSystem/keycodes.ts
-var KeyCode = {
-  // Letters
-  A: "KeyA",
-  B: "KeyB",
-  C: "KeyC",
-  D: "KeyD",
-  E: "KeyE",
-  F: "KeyF",
-  G: "KeyG",
-  H: "KeyH",
-  I: "KeyI",
-  J: "KeyJ",
-  K: "KeyK",
-  L: "KeyL",
-  M: "KeyM",
-  N: "KeyN",
-  O: "KeyO",
-  P: "KeyP",
-  Q: "KeyQ",
-  R: "KeyR",
-  S: "KeyS",
-  T: "KeyT",
-  U: "KeyU",
-  V: "KeyV",
-  W: "KeyW",
-  X: "KeyX",
-  Y: "KeyY",
-  Z: "KeyZ",
-  // Numbers
-  Digit0: "Digit0",
-  Digit1: "Digit1",
-  Digit2: "Digit2",
-  Digit3: "Digit3",
-  Digit4: "Digit4",
-  Digit5: "Digit5",
-  Digit6: "Digit6",
-  Digit7: "Digit7",
-  Digit8: "Digit8",
-  Digit9: "Digit9",
-  // Arrows
-  ArrowUp: "ArrowUp",
-  ArrowDown: "ArrowDown",
-  ArrowLeft: "ArrowLeft",
-  ArrowRight: "ArrowRight",
-  // Common
-  Space: "Space",
-  Enter: "Enter",
-  Escape: "Escape",
-  Tab: "Tab",
-  Backspace: "Backspace",
-  // Modifiers
-  ShiftLeft: "ShiftLeft",
-  ShiftRight: "ShiftRight",
-  ControlLeft: "ControlLeft",
-  ControlRight: "ControlRight",
-  AltLeft: "AltLeft",
-  AltRight: "AltRight",
-  // Function keys
-  F1: "F1",
-  F2: "F2",
-  F3: "F3",
-  F4: "F4",
-  F5: "F5",
-  F6: "F6",
-  F7: "F7",
-  F8: "F8",
-  F9: "F9",
-  F10: "F10",
-  F11: "F11",
-  F12: "F12"
-};
-
-// math/quaternion.ts
-function allocQuaternion(x = 0, y = 0, z = 0, w = 1) {
-  return {
-    imaginary: allocVec3(x, y, z),
-    scalar: w
-  };
-}
-function multiplyQuaternions(res, q1, q2) {
-  const w1 = q1.scalar;
-  const x1 = q1.imaginary[0];
-  const y1 = q1.imaginary[1];
-  const z1 = q1.imaginary[2];
-  const w2 = q2.scalar;
-  const x2 = q2.imaginary[0];
-  const y2 = q2.imaginary[1];
-  const z2 = q2.imaginary[2];
-  const w = w1 * w2 - x1 * x2 - y1 * y2 - z1 * z2;
-  const x = w1 * x2 + x1 * w2 + y1 * z2 - z1 * y2;
-  const y = w1 * y2 - x1 * z2 + y1 * w2 + z1 * x2;
-  const z = w1 * z2 + x1 * y2 - y1 * x2 + z1 * w2;
-  res.imaginary[0] = x;
-  res.imaginary[1] = y;
-  res.imaginary[2] = z;
-  res.scalar = w;
-}
-function norm(q) {
-  const x = q.imaginary[0];
-  const y = q.imaginary[1];
-  const z = q.imaginary[2];
-  const w = q.scalar;
-  return Math.sqrt(x * x + y * y + z * z + w * w);
-}
-function quaternionFromAxisAngle(axis, angle) {
-  const len = Math.hypot(axis[0], axis[1], axis[2]);
-  const nx = axis[0] / len;
-  const ny = axis[1] / len;
-  const nz = axis[2] / len;
-  const half = angle / 2;
-  const s = Math.sin(half);
-  return {
-    imaginary: allocVec3(nx * s, ny * s, nz * s),
-    scalar: Math.cos(half)
-  };
-}
-function rotateVec3ByQuaternion(out, v, q) {
-  const x = q.imaginary[0], y = q.imaginary[1], z = q.imaginary[2], w = q.scalar;
-  const vx = v[0], vy = v[1], vz = v[2];
-  const tx = 2 * (y * vz - z * vy);
-  const ty = 2 * (z * vx - x * vz);
-  const tz = 2 * (x * vy - y * vx);
-  out[0] = vx + w * tx + (y * tz - z * ty);
-  out[1] = vy + w * ty + (z * tx - x * tz);
-  out[2] = vz + w * tz + (x * ty - y * tx);
-}
-function normalizeQuaternion(out, q) {
-  const length = norm(q);
-  if (length <= 1e-8) {
-    out.imaginary[0] = 0;
-    out.imaginary[1] = 0;
-    out.imaginary[2] = 0;
-    out.scalar = 1;
-    return;
-  }
-  const inv = 1 / length;
-  out.imaginary[0] = q.imaginary[0] * inv;
-  out.imaginary[1] = q.imaginary[1] * inv;
-  out.imaginary[2] = q.imaginary[2] * inv;
-  out.scalar = q.scalar * inv;
-}
-function composeQuaternion(out, lhs, rhs) {
-  multiplyQuaternions(out, lhs, rhs);
-  normalizeQuaternion(out, out);
-}
-
-// src/graphics/transform.ts
-var Transform = class {
-  position = allocVec3(0, 0, 0);
-  scaling = allocVec3(1, 1, 1);
-  rotation = allocQuaternion(0, 0, 0, 1);
-  // (x, y, z) imaginary part, w scalar part -> rotation axis is (x, y, z) and angle is 2 * acos(w)
-  revision = 0;
-  get version() {
-    return this.revision;
-  }
-  markChanged() {
-    this.revision++;
-  }
-  setTranslation(x, y, z) {
-    this.position[0] = x;
-    this.position[1] = y;
-    this.position[2] = z;
-    this.markChanged();
-    return this;
-  }
-  translateBy(dx, dy, dz) {
-    this.position[0] += dx;
-    this.position[1] += dy;
-    this.position[2] += dz;
-    this.markChanged();
-    return this;
-  }
-  setScale(x, y, z) {
-    this.scaling[0] = x;
-    this.scaling[1] = y;
-    this.scaling[2] = z;
-    this.markChanged();
-    return this;
-  }
-  setRotation(angle, axisX, axisY, axisZ) {
-    const axis = allocVec3(axisX, axisY, axisZ);
-    const rotation = quaternionFromAxisAngle(axis, angle);
-    this.rotation.imaginary[0] = rotation.imaginary[0];
-    this.rotation.imaginary[1] = rotation.imaginary[1];
-    this.rotation.imaginary[2] = rotation.imaginary[2];
-    this.rotation.scalar = rotation.scalar;
-    normalizeQuaternion(this.rotation, this.rotation);
-    this.markChanged();
-    return this;
-  }
-  rotateByAxisAngle(angle, axisX, axisY, axisZ) {
-    const delta = quaternionFromAxisAngle(allocVec3(axisX, axisY, axisZ), angle);
-    composeQuaternion(this.rotation, delta, this.rotation);
-    this.markChanged();
-    return this;
-  }
-  rotateVec3(out, v) {
-    rotateVec3ByQuaternion(out, v, this.rotation);
-  }
-  getRotationAxisAngle(outAxis) {
-    normalizeQuaternion(this.rotation, this.rotation);
-    const w = Math.max(-1, Math.min(1, this.rotation.scalar));
-    const angle = 2 * Math.acos(w);
-    const s = Math.sqrt(1 - w * w);
-    if (s < 1e-6) {
-      outAxis[0] = 0;
-      outAxis[1] = 1;
-      outAxis[2] = 0;
-      return 0;
-    }
-    outAxis[0] = this.rotation.imaginary[0] / s;
-    outAxis[1] = this.rotation.imaginary[1] / s;
-    outAxis[2] = this.rotation.imaginary[2] / s;
-    return angle;
-  }
-};
-
-// src/graphics/camera.ts
-var FORWARD_REF = allocVec3(0, 0, -1);
-var RIGHT_REF = allocVec3(1, 0, 0);
-var Camera = class {
-  // Projection parameters
-  aspect = 1;
-  near = 0.1;
-  far = 100;
-  fovy = Math.PI / 4;
-  forward = allocVec3(0, 0, -1);
-  right = allocVec3(1, 0, 0);
-  up = allocVec3(0, 1, 0);
-  viewTarget = allocVec3(0, 0, -1);
-  transform = new Transform();
-  moveSpeed = 2;
-  yaw = 0;
-  constructor(aspect, near, far, fovy) {
-    this.aspect = aspect;
-    this.near = near;
-    this.far = far;
-    this.fovy = fovy;
-    this.transform.setRotation(this.yaw, 0, 1, 0);
-    this.transform.setTranslation(0, 0, 5);
-  }
-  getViewMatrix(view) {
-    this.deriveBasisVectors();
-    scaleAndAdd(this.viewTarget, this.transform.position, this.forward, 1);
-    return lookAt(view, this.transform.position, this.viewTarget, this.up);
-  }
-  getProjectionMatrix(projection) {
-    return perspective(projection, this.fovy, this.aspect, this.near, this.far);
-  }
-  processInput(input2, deltaTime) {
-    this.updateMovement(input2, deltaTime);
-  }
-  updateMovement(input2, deltaTime) {
-    const speed = this.moveSpeed * deltaTime;
-    this.deriveBasisVectors();
-    if (input2.isKeyPressed(KeyCode.W)) {
-      scaleAndAdd(this.transform.position, this.transform.position, this.forward, speed);
-    }
-    if (input2.isKeyPressed(KeyCode.S)) {
-      scaleAndAdd(this.transform.position, this.transform.position, this.forward, -speed);
-    }
-    if (input2.isKeyPressed(KeyCode.A)) {
-      scaleAndAdd(this.transform.position, this.transform.position, this.right, -speed);
-    }
-    if (input2.isKeyPressed(KeyCode.D)) {
-      scaleAndAdd(this.transform.position, this.transform.position, this.right, speed);
-    }
-    if (input2.isKeyPressed(KeyCode.ArrowUp)) {
-      translateY(this.transform.position, speed);
-    }
-    if (input2.isKeyPressed(KeyCode.ArrowDown)) {
-      translateY(this.transform.position, -speed);
-    }
-    const rotSpeed = 1.5 * deltaTime;
-    if (input2.isKeyPressed(KeyCode.ArrowLeft)) {
-      this.yaw += rotSpeed;
-    }
-    if (input2.isKeyPressed(KeyCode.ArrowRight)) {
-      this.yaw -= rotSpeed;
-    }
-    this.transform.setRotation(this.yaw, 0, 1, 0);
-  }
-  deriveBasisVectors() {
-    this.transform.rotateVec3(this.forward, FORWARD_REF);
-    this.transform.rotateVec3(this.right, RIGHT_REF);
-    normalize(this.forward, this.forward);
-    normalize(this.right, this.right);
-    cross(this.up, this.right, this.forward);
-    normalize(this.up, this.up);
-  }
-};
-var camera_default = Camera;
-
-// src/graphics/renderer.ts
-var Renderer = class {
-  initialized = false;
-  init() {
-    if (this.initialized) return;
-    gl.enable(gl.DEPTH_TEST);
-    gl.clearColor(0.1, 0.1, 0.1, 1);
-    this.initialized = true;
-  }
-  render(scene2, time) {
-    this.init();
-    gl.viewport(0, 0, canvas.width, canvas.height);
-    gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
-    for (const entity of scene2.entities) {
-      if (entity.renderable) {
-        entity.renderable.draw(
-          scene2.camera,
-          scene2.directionalLight,
-          scene2.pointLights
-        );
-      }
-    }
-  }
-};
-
-// src/graphics/light.ts
-function createPointLight(x, y, z, r, g, b, intensity = 1, radius = 10) {
-  return {
-    type: "Point" /* Point */,
-    position: allocVec3(x, y, z),
-    color: allocVec3(r, g, b),
-    intensity,
-    radius
-  };
-}
-function createDirectionalLight(dirX, dirY, dirZ, r, g, b, intensity = 1) {
-  return {
-    type: "Directional" /* Directional */,
-    direction: allocVec3(dirX, dirY, dirZ),
-    color: allocVec3(r, g, b),
-    intensity
-  };
-}
-var MAX_POINT_LIGHTS = 4;
-
-// src/graphics/scene.ts
-var Scene = class {
-  camera;
-  entities = [];
-  directionalLight;
-  pointLights = [];
-  constructor(camera) {
-    this.camera = camera;
-    this.directionalLight = createDirectionalLight(-0.5, -1, -0.5, 1, 1, 1, 1);
-  }
-  add(entity) {
-    this.entities.push(entity);
-  }
-  addPointLight(light) {
-    this.pointLights.push(light);
-  }
-  setDirectionalLight(light) {
-    this.directionalLight = light;
-  }
-};
-
 // src/graphics/shaderSrc.ts
 var SHADERS = {
-  fragment: "#version 300 es\n\nprecision mediump float;\nin vec3 v_normal;\nuniform vec3 u_light_dir;\nuniform vec3 u_base_color;\nout vec4 fragColor;\n\nvoid main() {\n    //basic lambertian diffuse + ambient\n    vec3 n = normalize(v_normal);\n\n    vec3 l = normalize(u_light_dir);\n    float diff = max(dot(n, l), 0.0);\n    float ambient = 0.4;\n    vec3 color = u_base_color * (ambient + diff);\n\n    fragColor = vec4(color, 1.0);\n\n    }",
-  pbrFragment: "#version 300 es\n\nprecision highp float;\n\nin vec3 v_worldPos;\nin vec3 v_normal;\n\n// Material uniforms\nuniform vec3 u_albedo;\nuniform float u_metallic;\nuniform float u_roughness;\nuniform float u_ao;\nuniform vec3 u_emissive;\n\n// Camera\nuniform vec3 u_cameraPos;\n\n// Directional light\nuniform vec3 u_lightDir;\nuniform vec3 u_lightColor;\nuniform float u_lightIntensity;\n\n// Point lights (up to 4)\n#define MAX_POINT_LIGHTS 4\nuniform int u_numPointLights;\nuniform vec3 u_pointLightPositions[MAX_POINT_LIGHTS];\nuniform vec3 u_pointLightColors[MAX_POINT_LIGHTS];\nuniform float u_pointLightIntensities[MAX_POINT_LIGHTS];\nuniform float u_pointLightRadii[MAX_POINT_LIGHTS];\n\nout vec4 fragColor;\n\nconst float PI = 3.14159265359;\n\n// Normal Distribution Function (GGX/Trowbridge-Reitz)\nfloat distributionGGX(vec3 N, vec3 H, float roughness) {\n    float a = roughness * roughness;\n    float a2 = a * a;\n    float NdotH = max(dot(N, H), 0.0);\n    float NdotH2 = NdotH * NdotH;\n\n    float denom = NdotH2 * (a2 - 1.0) + 1.0;\n    denom = PI * denom * denom;\n\n    return a2 / max(denom, 0.0001);\n}\n\n// Geometry Function (Schlick-GGX)\nfloat geometrySchlickGGX(float NdotV, float roughness) {\n    float r = roughness + 1.0;\n    float k = (r * r) / 8.0;\n\n    float denom = NdotV * (1.0 - k) + k;\n    return NdotV / max(denom, 0.0001);\n}\n\n// Geometry Function (Smith's method)\nfloat geometrySmith(vec3 N, vec3 V, vec3 L, float roughness) {\n    float NdotV = max(dot(N, V), 0.0);\n    float NdotL = max(dot(N, L), 0.0);\n    float ggx1 = geometrySchlickGGX(NdotV, roughness);\n    float ggx2 = geometrySchlickGGX(NdotL, roughness);\n    return ggx1 * ggx2;\n}\n\n// Fresnel Equation (Schlick approximation)\nvec3 fresnelSchlick(float cosTheta, vec3 F0) {\n    return F0 + (1.0 - F0) * pow(clamp(1.0 - cosTheta, 0.0, 1.0), 5.0);\n}\n\n// Attenuation for point lights\nfloat calculateAttenuation(float distance, float radius) {\n    float attenuation = 1.0 / (distance * distance + 1.0);\n    float falloff = clamp(1.0 - pow(distance / radius, 4.0), 0.0, 1.0);\n    return attenuation * falloff * falloff;\n}\n\n// Calculate lighting contribution from a single light\nvec3 calculateLight(vec3 N, vec3 V, vec3 L, vec3 radiance, vec3 albedo, float metallic, float roughness) {\n    vec3 H = normalize(V + L);\n    \n    // Calculate F0 (surface reflection at zero incidence)\n    vec3 F0 = vec3(0.04);\n    F0 = mix(F0, albedo, metallic);\n    \n    // Cook-Torrance BRDF\n    float NDF = distributionGGX(N, H, roughness);\n    float G = geometrySmith(N, V, L, roughness);\n    vec3 F = fresnelSchlick(max(dot(H, V), 0.0), F0);\n    \n    // Specular component\n    vec3 numerator = NDF * G * F;\n    float denominator = 4.0 * max(dot(N, V), 0.0) * max(dot(N, L), 0.0) + 0.0001;\n    vec3 specular = numerator / denominator;\n    \n    // Energy conservation\n    vec3 kS = F;\n    vec3 kD = vec3(1.0) - kS;\n    kD *= 1.0 - metallic; // Metals have no diffuse\n    \n    float NdotL = max(dot(N, L), 0.0);\n    \n    return (kD * albedo / PI + specular) * radiance * NdotL;\n}\n\nvoid main() {\n    vec3 N = normalize(v_normal);\n    vec3 V = normalize(u_cameraPos - v_worldPos);\n    \n    vec3 Lo = vec3(0.0);\n    \n    // Directional light contribution\n    vec3 L = normalize(-u_lightDir);\n    vec3 radiance = u_lightColor * u_lightIntensity;\n    Lo += calculateLight(N, V, L, radiance, u_albedo, u_metallic, u_roughness);\n    \n    // Point lights contribution\n    for (int i = 0; i < MAX_POINT_LIGHTS; i++) {\n        if (i >= u_numPointLights) break;\n        \n        vec3 lightVec = u_pointLightPositions[i] - v_worldPos;\n        float distance = length(lightVec);\n        vec3 L_point = normalize(lightVec);\n        \n        float attenuation = calculateAttenuation(distance, u_pointLightRadii[i]);\n        vec3 pointRadiance = u_pointLightColors[i] * u_pointLightIntensities[i] * attenuation;\n        \n        Lo += calculateLight(N, V, L_point, pointRadiance, u_albedo, u_metallic, u_roughness);\n    }\n    \n    // Ambient lighting (simple approximation)\n    vec3 ambient = vec3(0.03) * u_albedo * u_ao;\n    \n    // Final color\n    vec3 color = ambient + Lo + u_emissive;\n    \n    // HDR tone mapping (Reinhard)\n    color = color / (color + vec3(1.0));\n    \n    // Gamma correction\n    color = pow(color, vec3(1.0 / 2.2));\n    \n    fragColor = vec4(color, 1.0);\n}\n",
-  pbrVertex: "#version 300 es\n\nlayout(location = 0) in vec3 a_pos;\nlayout(location = 1) in vec3 a_normal;\n\nuniform mat4 u_model;\nuniform mat4 u_view;\nuniform mat4 u_projection;\n\nout vec3 v_worldPos;\nout vec3 v_normal;\n\nvoid main() {\n    vec4 worldPos = u_model * vec4(a_pos, 1.0);\n    v_worldPos = worldPos.xyz;\n    \n    // Transform normal to world space (assumes uniform scaling or use inverse transpose)\n    v_normal = mat3(u_model) * a_normal;\n    \n    gl_Position = u_projection * u_view * worldPos;\n}\n",
-  vertex: "#version 300 es\n\nlayout(location = 0) in vec3 a_pos;\nlayout(location = 1) in vec3 a_normal;\n\n//MVP matrices\nuniform mat4 u_model;\nuniform mat4 u_view;\nuniform mat4 u_projection;\n\nout vec3 v_normal;\n\nvoid main() {\n\n    v_normal = mat3(u_model) * a_normal;\n\n    gl_Position = u_projection * u_view * u_model * vec4(a_pos, 1.0);\n}"
+  fragment: "#version 300 es\r\n\r\nprecision mediump float;\r\nin vec3 v_normal;\r\nuniform vec3 u_light_dir;\r\nuniform vec3 u_base_color;\r\nout vec4 fragColor;\r\n\r\nvoid main() {\r\n    //basic lambertian diffuse + ambient\r\n    vec3 n = normalize(v_normal);\r\n\r\n    vec3 l = normalize(u_light_dir);\r\n    float diff = max(dot(n, l), 0.0);\r\n    float ambient = 0.4;\r\n    vec3 color = u_base_color * (ambient + diff);\r\n\r\n    fragColor = vec4(color, 1.0);\r\n\r\n    }",
+  vertex: "#version 300 es\r\n\r\nlayout(location = 0) in vec3 a_pos;\r\nlayout(location = 1) in vec3 a_normal;\r\n\r\n//MVP matrices\r\nuniform mat4 u_model;\r\nuniform mat4 u_view;\r\nuniform mat4 u_projection;\r\n\r\nout vec3 v_normal;\r\n\r\nvoid main() {\r\n\r\n    v_normal = mat3(u_model) * a_normal;\r\n\r\n    gl_Position = u_projection * u_view * u_model * vec4(a_pos, 1.0);\r\n}"
 };
 
 // src/graphics/shader.ts
@@ -1099,6 +518,91 @@ var PYRAMID = {
     17
   ]
 };
+function createSphere(radius = 0.5, subdivisions = 3) {
+  const t = (1 + Math.sqrt(5)) / 2;
+  const baseVertices = [
+    [-1, t, 0],
+    [1, t, 0],
+    [-1, -t, 0],
+    [1, -t, 0],
+    [0, -1, t],
+    [0, 1, t],
+    [0, -1, -t],
+    [0, 1, -t],
+    [t, 0, -1],
+    [t, 0, 1],
+    [-t, 0, -1],
+    [-t, 0, 1]
+  ];
+  for (const v of baseVertices) {
+    const len = Math.sqrt(v[0] * v[0] + v[1] * v[1] + v[2] * v[2]);
+    v[0] /= len;
+    v[1] /= len;
+    v[2] /= len;
+  }
+  let faces = [
+    [0, 11, 5],
+    [0, 5, 1],
+    [0, 1, 7],
+    [0, 7, 10],
+    [0, 10, 11],
+    [1, 5, 9],
+    [5, 11, 4],
+    [11, 10, 2],
+    [10, 7, 6],
+    [7, 1, 8],
+    [3, 9, 4],
+    [3, 4, 2],
+    [3, 2, 6],
+    [3, 6, 8],
+    [3, 8, 9],
+    [4, 9, 5],
+    [2, 4, 11],
+    [6, 2, 10],
+    [8, 6, 7],
+    [9, 8, 1]
+  ];
+  const verts = [...baseVertices];
+  const midpointCache = /* @__PURE__ */ new Map();
+  function getMidpoint(a, b) {
+    const key = a < b ? `${a}_${b}` : `${b}_${a}`;
+    const cached = midpointCache.get(key);
+    if (cached !== void 0) return cached;
+    const ax = verts[a][0], ay = verts[a][1], az = verts[a][2];
+    const bx = verts[b][0], by = verts[b][1], bz = verts[b][2];
+    let mx = (ax + bx) / 2, my = (ay + by) / 2, mz = (az + bz) / 2;
+    const len = Math.sqrt(mx * mx + my * my + mz * mz);
+    mx /= len;
+    my /= len;
+    mz /= len;
+    const idx = verts.length;
+    verts.push([mx, my, mz]);
+    midpointCache.set(key, idx);
+    return idx;
+  }
+  for (let i = 0; i < subdivisions; i++) {
+    const newFaces = [];
+    for (const [a, b, c] of faces) {
+      const ab = getMidpoint(a, b);
+      const bc = getMidpoint(b, c);
+      const ca = getMidpoint(c, a);
+      newFaces.push([a, ab, ca], [b, bc, ab], [c, ca, bc], [ab, bc, ca]);
+    }
+    faces = newFaces;
+    midpointCache.clear();
+  }
+  const vertices = [];
+  const normals = [];
+  const indices = [];
+  for (const v of verts) {
+    vertices.push(v[0] * radius, v[1] * radius, v[2] * radius);
+    normals.push(v[0], v[1], v[2]);
+  }
+  for (const [a, b, c] of faces) {
+    indices.push(a, b, c);
+  }
+  return { vertices, normals, indices };
+}
 
 // src/assetManager.ts
 var AssetManager = class _AssetManager {
@@ -1114,18 +618,18 @@ var AssetManager = class _AssetManager {
     return _AssetManager.instance;
   }
   // Shader management
-  registerShader(name, shader) {
+  registerShader(name, shader2) {
     if (this.shaders.has(name)) {
       console.warn(`Shader "${name}" already registered, overwriting.`);
     }
-    this.shaders.set(name, shader);
+    this.shaders.set(name, shader2);
   }
   getShader(name) {
-    const shader = this.shaders.get(name);
-    if (!shader) {
+    const shader2 = this.shaders.get(name);
+    if (!shader2) {
       throw new Error(`Shader "${name}" not found in registry.`);
     }
-    return shader;
+    return shader2;
   }
   // Model management
   registerModel(name, model) {
@@ -1149,137 +653,47 @@ Assets.registerModel("cube", CUBE);
 Assets.registerModel("plane", QUAD);
 Assets.registerModel("triangle", TRIANGLE);
 Assets.registerModel("pyramid", PYRAMID);
+Assets.registerModel("sphere", createSphere(0.5, 3));
 Assets.registerShader("default", new Shader(SHADERS.vertex, SHADERS.fragment));
-Assets.registerShader("pbr", new Shader(SHADERS.pbrVertex, SHADERS.pbrFragment));
 
-// src/core/clock.ts
-var FixedStepClock = class {
-  fixedDT;
-  accumulator = 0;
-  lastTime = 0;
-  timeElapsed = 0;
-  constructor(fixedDT) {
-    this.fixedDT = fixedDT;
-    this.lastTime = performance.now() / 1e3;
-  }
-  tick() {
-    const now = performance.now() / 1e3;
-    let delta = now - this.lastTime;
-    this.lastTime = now;
-    this.timeElapsed += delta;
-    if (delta > 0.25) delta = 0.25;
-    this.accumulator += delta;
-    let steps = 0;
-    while (this.accumulator >= this.fixedDT) {
-      this.accumulator -= this.fixedDT;
-      steps++;
-    }
-    return steps;
-  }
-  get elapsedTime() {
-    return this.timeElapsed;
-  }
-};
-
-// math/vec2.ts
-function create3() {
-  return new Float32Array(2);
+// math/vec3.ts
+function create() {
+  return new Float32Array(3);
 }
-function allocVec2(a = 0, b = 0) {
-  const out = create3();
+function allocVec3(a = 0, b = 0, c = 0) {
+  const out = create();
   out[0] = a;
   out[1] = b;
+  out[2] = c;
   return out;
 }
-function setVec2(out, a, b) {
-  out[0] = a;
-  out[1] = b;
+function translateY(out, delta) {
+  out[1] += delta;
+  return out;
 }
-
-// src/inputSystem/inputManager.ts
-var EventQueue = class {
-  queue = [];
-  enqueue(event) {
-    this.queue.push(event);
+function cross(out, a, b) {
+  const ax = a[0], ay = a[1], az = a[2];
+  const bx = b[0], by = b[1], bz = b[2];
+  out[0] = ay * bz - az * by;
+  out[1] = az * bx - ax * bz;
+  out[2] = ax * by - ay * bx;
+}
+function normalize(out, a) {
+  const x = a[0], y = a[1], z = a[2];
+  let len = x * x + y * y + z * z;
+  if (len > 0) {
+    len = 1 / Math.sqrt(len);
+    out[0] = x * len;
+    out[1] = y * len;
+    out[2] = z * len;
   }
-  consume() {
-    const events = [...this.queue];
-    this.queue = [];
-    return events;
-  }
-};
-var InputCollector = class {
-  constructor(queue) {
-    this.queue = queue;
-    window.addEventListener("keydown", (e) => {
-      this.queue.enqueue({
-        type: "Keydown",
-        key: e.code,
-        timestamp: performance.now()
-      });
-    });
-    window.addEventListener("keyup", (e) => {
-      this.queue.enqueue({
-        type: "Keyup",
-        key: e.code,
-        timestamp: performance.now()
-      });
-    });
-    window.addEventListener("mousemove", (e) => {
-      this.queue.enqueue({
-        type: "Mousemove",
-        dx: e.movementX,
-        dy: e.movementY,
-        timestamp: performance.now()
-      });
-    });
-  }
-};
-var InputManager = class {
-  static KeyCodes = KeyCode;
-  keyState = /* @__PURE__ */ new Map();
-  mouseButtonState = /* @__PURE__ */ new Map();
-  // button 1 = left, 2 = middle, 3 = right
-  mousePosDx = 0;
-  mousePosDy = 0;
-  mousePos = allocVec2(0, 0);
-  inputEventQueue;
-  inputCollector;
-  constructor() {
-    this.inputEventQueue = new EventQueue();
-    this.inputCollector = new InputCollector(this.inputEventQueue);
-  }
-  // consumes all the events captured in this particular frame and executes the corresponding commands
-  update() {
-    const events = this.inputEventQueue.consume();
-    this.mousePosDx = 0;
-    this.mousePosDy = 0;
-    for (const event of events) {
-      if (event.type === "Keydown") {
-        this.keyState.set(event.key, true);
-      } else if (event.type === "Keyup") {
-        this.keyState.set(event.key, false);
-      } else if (event.type === "Mousemove") {
-        this.mousePosDx += event.dx;
-        this.mousePosDy += event.dy;
-      } else if (event.type === "Mousedown") {
-        this.mouseButtonState.set(event.button, true);
-      } else if (event.type === "Mouseup") {
-        this.mouseButtonState.set(event.button, false);
-      }
-    }
-    setVec2(this.mousePos, this.mousePosDx, this.mousePosDy);
-  }
-  isKeyPressed(key) {
-    return this.keyState.get(key) ?? false;
-  }
-  getMousePosition() {
-    return this.mousePos;
-  }
-  isMouseButtonPressed(button) {
-    return false;
-  }
-};
+}
+function scaleAndAdd(out, a, b, scale2) {
+  out[0] = a[0] + b[0] * scale2;
+  out[1] = a[1] + b[1] * scale2;
+  out[2] = a[2] + b[2] * scale2;
+  return out;
+}
 
 // src/physics/aabb.ts
 var AABB = class {
@@ -1535,27 +949,183 @@ function simulatePhysics(entities, deltaTime) {
   }
 }
 
-// src/graphics/pbrMaterial.ts
-function createPBRMaterial(shader, options = {}) {
-  return {
-    shader,
-    albedo: allocVec3(
-      options.albedo?.[0] ?? 1,
-      options.albedo?.[1] ?? 1,
-      options.albedo?.[2] ?? 1
-    ),
-    metallic: options.metallic ?? 0,
-    roughness: options.roughness ?? 0.5,
-    ao: options.ao ?? 1,
-    emissive: allocVec3(
-      options.emissive?.[0] ?? 0,
-      options.emissive?.[1] ?? 0,
-      options.emissive?.[2] ?? 0
-    )
-  };
+// math/mat4.ts
+function create2() {
+  return new Float32Array(16);
 }
-function isPBRMaterial(mat) {
-  return typeof mat === "object" && mat !== null && "albedo" in mat && "metallic" in mat && "roughness" in mat;
+function allocMat4() {
+  const out = create2();
+  out[0] = 1;
+  out[1] = 0;
+  out[2] = 0;
+  out[3] = 0;
+  out[4] = 0;
+  out[5] = 1;
+  out[6] = 0;
+  out[7] = 0;
+  out[8] = 0;
+  out[9] = 0;
+  out[10] = 1;
+  out[11] = 0;
+  out[12] = 0;
+  out[13] = 0;
+  out[14] = 0;
+  out[15] = 1;
+  return out;
+}
+function identity(out) {
+  out[0] = 1;
+  out[1] = 0;
+  out[2] = 0;
+  out[3] = 0;
+  out[4] = 0;
+  out[5] = 1;
+  out[6] = 0;
+  out[7] = 0;
+  out[8] = 0;
+  out[9] = 0;
+  out[10] = 1;
+  out[11] = 0;
+  out[12] = 0;
+  out[13] = 0;
+  out[14] = 0;
+  out[15] = 1;
+  return out;
+}
+function lookAt(out, eye, center, up) {
+  const z = allocVec3(
+    eye[0] - center[0],
+    eye[1] - center[1],
+    eye[2] - center[2]
+  );
+  normalize(z, z);
+  const x = allocVec3();
+  cross(x, up, z);
+  normalize(x, x);
+  const y = allocVec3();
+  cross(y, z, x);
+  out[0] = x[0];
+  out[1] = y[0];
+  out[2] = z[0];
+  out[3] = 0;
+  out[4] = x[1];
+  out[5] = y[1];
+  out[6] = z[1];
+  out[7] = 0;
+  out[8] = x[2];
+  out[9] = y[2];
+  out[10] = z[2];
+  out[11] = 0;
+  out[12] = -(x[0] * eye[0] + x[1] * eye[1] + x[2] * eye[2]);
+  out[13] = -(y[0] * eye[0] + y[1] * eye[1] + y[2] * eye[2]);
+  out[14] = -(z[0] * eye[0] + z[1] * eye[1] + z[2] * eye[2]);
+  out[15] = 1;
+  return out;
+}
+function perspective(out, fovy, aspect, near, far) {
+  const f = 1 / Math.tan(fovy / 2);
+  const nf = 1 / (near - far);
+  out[0] = f / aspect;
+  out[1] = 0;
+  out[2] = 0;
+  out[3] = 0;
+  out[4] = 0;
+  out[5] = f;
+  out[6] = 0;
+  out[7] = 0;
+  out[8] = 0;
+  out[9] = 0;
+  out[10] = (far + near) * nf;
+  out[11] = -1;
+  out[12] = 0;
+  out[13] = 0;
+  out[14] = 2 * far * near * nf;
+  out[15] = 0;
+  return out;
+}
+function translate(out, a, v) {
+  const x = v[0], y = v[1], z = v[2];
+  const a00 = a[0], a01 = a[1], a02 = a[2], a03 = a[3];
+  const a10 = a[4], a11 = a[5], a12 = a[6], a13 = a[7];
+  const a20 = a[8], a21 = a[9], a22 = a[10], a23 = a[11];
+  out[0] = a00;
+  out[1] = a01;
+  out[2] = a02;
+  out[3] = a03;
+  out[4] = a10;
+  out[5] = a11;
+  out[6] = a12;
+  out[7] = a13;
+  out[8] = a20;
+  out[9] = a21;
+  out[10] = a22;
+  out[11] = a23;
+  out[12] = a00 * x + a10 * y + a20 * z + a[12];
+  out[13] = a01 * x + a11 * y + a21 * z + a[13];
+  out[14] = a02 * x + a12 * y + a22 * z + a[14];
+  out[15] = a03 * x + a13 * y + a23 * z + a[15];
+  return out;
+}
+function scale(out, a, v) {
+  const x = v[0], y = v[1], z = v[2];
+  out[0] = a[0] * x;
+  out[1] = a[1] * x;
+  out[2] = a[2] * x;
+  out[3] = a[3] * x;
+  out[4] = a[4] * y;
+  out[5] = a[5] * y;
+  out[6] = a[6] * y;
+  out[7] = a[7] * y;
+  out[8] = a[8] * z;
+  out[9] = a[9] * z;
+  out[10] = a[10] * z;
+  out[11] = a[11] * z;
+  out[12] = a[12];
+  out[13] = a[13];
+  out[14] = a[14];
+  out[15] = a[15];
+  return out;
+}
+function rotate(out, a, rad, axis) {
+  const x = axis[0], y = axis[1], z = axis[2];
+  const len = Math.hypot(x, y, z);
+  if (len < 1e-6) return null;
+  const s = Math.sin(rad);
+  const c = Math.cos(rad);
+  const t = 1 - c;
+  const a00 = a[0], a01 = a[1], a02 = a[2], a03 = a[3];
+  const a10 = a[4], a11 = a[5], a12 = a[6], a13 = a[7];
+  const a20 = a[8], a21 = a[9], a22 = a[10], a23 = a[11];
+  const rlen = 1 / len;
+  const nx = x * rlen;
+  const ny = y * rlen;
+  const nz = z * rlen;
+  const b00 = nx * nx * t + c;
+  const b01 = ny * nx * t + nz * s;
+  const b02 = nz * nx * t - ny * s;
+  const b10 = nx * ny * t - nz * s;
+  const b11 = ny * ny * t + c;
+  const b12 = nz * ny * t + nx * s;
+  const b20 = nx * nz * t + ny * s;
+  const b21 = ny * nz * t - nx * s;
+  const b22 = nz * nz * t + c;
+  out[0] = a00 * b00 + a10 * b01 + a20 * b02;
+  out[1] = a01 * b00 + a11 * b01 + a21 * b02;
+  out[2] = a02 * b00 + a12 * b01 + a22 * b02;
+  out[3] = a03 * b00 + a13 * b01 + a23 * b02;
+  out[4] = a00 * b10 + a10 * b11 + a20 * b12;
+  out[5] = a01 * b10 + a11 * b11 + a21 * b12;
+  out[6] = a02 * b10 + a12 * b11 + a22 * b12;
+  out[7] = a03 * b10 + a13 * b11 + a23 * b12;
+  out[8] = a00 * b20 + a10 * b21 + a20 * b22;
+  out[9] = a01 * b20 + a11 * b21 + a21 * b22;
+  out[10] = a02 * b20 + a12 * b21 + a22 * b22;
+  out[11] = a03 * b20 + a13 * b21 + a23 * b22;
+  out[12] = a[12];
+  out[13] = a[13];
+  out[14] = a[14];
+  out[15] = a[15];
+  return out;
 }
 
 // src/graphics/renderable.ts
@@ -1580,7 +1150,7 @@ var Renderable = class {
     rotate(this.temp, this.model, rotationAngle, this.rotationAxis);
     scale(this.model, this.temp, this.transform.scaling);
   }
-  draw(cam, dirLight, pointLights) {
+  draw(cam, dirLight) {
     this.mat.shader.use();
     this.updateModelMatrix();
     cam.getViewMatrix(this.view);
@@ -1588,41 +1158,9 @@ var Renderable = class {
     this.mat.shader.setMat4("u_model", this.model);
     this.mat.shader.setMat4("u_view", this.view);
     this.mat.shader.setMat4("u_projection", this.projection);
-    if (isPBRMaterial(this.mat)) {
-      this.mat.shader.setVec3("u_albedo", this.mat.albedo);
-      this.mat.shader.setFloat("u_metallic", this.mat.metallic);
-      this.mat.shader.setFloat("u_roughness", this.mat.roughness);
-      this.mat.shader.setFloat("u_ao", this.mat.ao);
-      this.mat.shader.setVec3("u_emissive", this.mat.emissive);
-      this.mat.shader.setVec3("u_cameraPos", cam.transform.position);
-      if (dirLight) {
-        this.mat.shader.setVec3("u_lightDir", dirLight.direction);
-        this.mat.shader.setVec3("u_lightColor", dirLight.color);
-        this.mat.shader.setFloat("u_lightIntensity", dirLight.intensity);
-      }
-      const lights = pointLights ?? [];
-      const numLights = Math.min(lights.length, MAX_POINT_LIGHTS);
-      this.mat.shader.setInt("u_numPointLights", numLights);
-      const positions = [];
-      const colors = [];
-      const intensities = [];
-      const radii = [];
-      for (let i = 0; i < numLights; i++) {
-        positions.push(lights[i].position);
-        colors.push(lights[i].color);
-        intensities.push(lights[i].intensity);
-        radii.push(lights[i].radius);
-      }
-      this.mat.shader.setVec3Array("u_pointLightPositions", positions);
-      this.mat.shader.setVec3Array("u_pointLightColors", colors);
-      this.mat.shader.setFloatArray("u_pointLightIntensities", intensities);
-      this.mat.shader.setFloatArray("u_pointLightRadii", radii);
-    } else {
-      const lightDir = allocVec3(1, 1, -1);
-      const baseColor = allocVec3(this.mat.color.r, this.mat.color.g, this.mat.color.b);
-      this.mat.shader.setVec3("u_light_dir", lightDir);
-      this.mat.shader.setVec3("u_base_color", baseColor);
-    }
+    const baseColor = allocVec3(this.mat.color.r, this.mat.color.g, this.mat.color.b);
+    this.mat.shader.setVec3("u_light_dir", dirLight ? dirLight.direction : allocVec3(1, 1, 1));
+    this.mat.shader.setVec3("u_base_color", baseColor);
     this.mesh.bind(gl);
     this.mesh.draw(gl);
   }
@@ -1792,7 +1330,153 @@ var Mesh = class _Mesh {
   }
 };
 
-// src/factories/entityFactory.ts
+// math/quaternion.ts
+function allocQuaternion(x = 0, y = 0, z = 0, w = 1) {
+  return {
+    imaginary: allocVec3(x, y, z),
+    scalar: w
+  };
+}
+function multiplyQuaternions(res, q1, q2) {
+  const w1 = q1.scalar;
+  const x1 = q1.imaginary[0];
+  const y1 = q1.imaginary[1];
+  const z1 = q1.imaginary[2];
+  const w2 = q2.scalar;
+  const x2 = q2.imaginary[0];
+  const y2 = q2.imaginary[1];
+  const z2 = q2.imaginary[2];
+  const w = w1 * w2 - x1 * x2 - y1 * y2 - z1 * z2;
+  const x = w1 * x2 + x1 * w2 + y1 * z2 - z1 * y2;
+  const y = w1 * y2 - x1 * z2 + y1 * w2 + z1 * x2;
+  const z = w1 * z2 + x1 * y2 - y1 * x2 + z1 * w2;
+  res.imaginary[0] = x;
+  res.imaginary[1] = y;
+  res.imaginary[2] = z;
+  res.scalar = w;
+}
+function norm(q) {
+  const x = q.imaginary[0];
+  const y = q.imaginary[1];
+  const z = q.imaginary[2];
+  const w = q.scalar;
+  return Math.sqrt(x * x + y * y + z * z + w * w);
+}
+function quaternionFromAxisAngle(axis, angle) {
+  const len = Math.hypot(axis[0], axis[1], axis[2]);
+  const nx = axis[0] / len;
+  const ny = axis[1] / len;
+  const nz = axis[2] / len;
+  const half = angle / 2;
+  const s = Math.sin(half);
+  return {
+    imaginary: allocVec3(nx * s, ny * s, nz * s),
+    scalar: Math.cos(half)
+  };
+}
+function rotateVec3ByQuaternion(out, v, q) {
+  const x = q.imaginary[0], y = q.imaginary[1], z = q.imaginary[2], w = q.scalar;
+  const vx = v[0], vy = v[1], vz = v[2];
+  const tx = 2 * (y * vz - z * vy);
+  const ty = 2 * (z * vx - x * vz);
+  const tz = 2 * (x * vy - y * vx);
+  out[0] = vx + w * tx + (y * tz - z * ty);
+  out[1] = vy + w * ty + (z * tx - x * tz);
+  out[2] = vz + w * tz + (x * ty - y * tx);
+}
+function normalizeQuaternion(out, q) {
+  const length = norm(q);
+  if (length <= 1e-8) {
+    out.imaginary[0] = 0;
+    out.imaginary[1] = 0;
+    out.imaginary[2] = 0;
+    out.scalar = 1;
+    return;
+  }
+  const inv = 1 / length;
+  out.imaginary[0] = q.imaginary[0] * inv;
+  out.imaginary[1] = q.imaginary[1] * inv;
+  out.imaginary[2] = q.imaginary[2] * inv;
+  out.scalar = q.scalar * inv;
+}
+function composeQuaternion(out, lhs, rhs) {
+  multiplyQuaternions(out, lhs, rhs);
+  normalizeQuaternion(out, out);
+}
+
+// src/graphics/transform.ts
+var Transform = class {
+  position = allocVec3(0, 0, 0);
+  scaling = allocVec3(1, 1, 1);
+  rotation = allocQuaternion(0, 0, 0, 1);
+  // (x, y, z) imaginary part, w scalar part -> rotation axis is (x, y, z) and angle is 2 * acos(w)
+  revision = 0;
+  get version() {
+    return this.revision;
+  }
+  markChanged() {
+    this.revision++;
+  }
+  setTranslation(x, y, z) {
+    this.position[0] = x;
+    this.position[1] = y;
+    this.position[2] = z;
+    this.markChanged();
+    return this;
+  }
+  translateBy(dx, dy, dz) {
+    this.position[0] += dx;
+    this.position[1] += dy;
+    this.position[2] += dz;
+    this.markChanged();
+    return this;
+  }
+  setScale(x, y, z) {
+    this.scaling[0] = x;
+    this.scaling[1] = y;
+    this.scaling[2] = z;
+    this.markChanged();
+    return this;
+  }
+  setRotation(angle, axisX, axisY, axisZ) {
+    const axis = allocVec3(axisX, axisY, axisZ);
+    const rotation = quaternionFromAxisAngle(axis, angle);
+    this.rotation.imaginary[0] = rotation.imaginary[0];
+    this.rotation.imaginary[1] = rotation.imaginary[1];
+    this.rotation.imaginary[2] = rotation.imaginary[2];
+    this.rotation.scalar = rotation.scalar;
+    normalizeQuaternion(this.rotation, this.rotation);
+    this.markChanged();
+    return this;
+  }
+  rotateByAxisAngle(angle, axisX, axisY, axisZ) {
+    const delta = quaternionFromAxisAngle(allocVec3(axisX, axisY, axisZ), angle);
+    composeQuaternion(this.rotation, delta, this.rotation);
+    this.markChanged();
+    return this;
+  }
+  rotateVec3(out, v) {
+    rotateVec3ByQuaternion(out, v, this.rotation);
+  }
+  getRotationAxisAngle(outAxis) {
+    normalizeQuaternion(this.rotation, this.rotation);
+    const w = Math.max(-1, Math.min(1, this.rotation.scalar));
+    const angle = 2 * Math.acos(w);
+    const s = Math.sqrt(1 - w * w);
+    if (s < 1e-6) {
+      outAxis[0] = 0;
+      outAxis[1] = 1;
+      outAxis[2] = 0;
+      return 0;
+    }
+    outAxis[0] = this.rotation.imaginary[0] / s;
+    outAxis[1] = this.rotation.imaginary[1] / s;
+    outAxis[2] = this.rotation.imaginary[2] / s;
+    return angle;
+  }
+};
+
+// src/graphics/entityMaker.ts
 function makeRigidbody(type, mass, restitution, velocityX = 0, velocityY = 0, velocityZ = 0) {
   return {
     type,
@@ -1818,76 +1502,401 @@ function createEntity(options) {
   };
 }
 
+// src/graphics/light.ts
+function createDirectionalLight(direction, color, intensity = 1) {
+  return {
+    direction,
+    color,
+    intensity
+  };
+}
+
+// src/graphics/scene.ts
+var Scene = class {
+  camera;
+  entities = [];
+  directionalLight;
+  constructor(camera) {
+    this.camera = camera;
+    this.directionalLight = createDirectionalLight(allocVec3(-0.5, -1, -0.5), allocVec3(1, 1, 1), 1);
+  }
+  add(entity) {
+    this.entities.push(entity);
+  }
+  setDirectionalLight(light) {
+    this.directionalLight = light;
+  }
+};
+
+// src/inputSystem/keycodes.ts
+var KeyCode = {
+  // Letters
+  A: "KeyA",
+  B: "KeyB",
+  C: "KeyC",
+  D: "KeyD",
+  E: "KeyE",
+  F: "KeyF",
+  G: "KeyG",
+  H: "KeyH",
+  I: "KeyI",
+  J: "KeyJ",
+  K: "KeyK",
+  L: "KeyL",
+  M: "KeyM",
+  N: "KeyN",
+  O: "KeyO",
+  P: "KeyP",
+  Q: "KeyQ",
+  R: "KeyR",
+  S: "KeyS",
+  T: "KeyT",
+  U: "KeyU",
+  V: "KeyV",
+  W: "KeyW",
+  X: "KeyX",
+  Y: "KeyY",
+  Z: "KeyZ",
+  // Numbers
+  Digit0: "Digit0",
+  Digit1: "Digit1",
+  Digit2: "Digit2",
+  Digit3: "Digit3",
+  Digit4: "Digit4",
+  Digit5: "Digit5",
+  Digit6: "Digit6",
+  Digit7: "Digit7",
+  Digit8: "Digit8",
+  Digit9: "Digit9",
+  // Arrows
+  ArrowUp: "ArrowUp",
+  ArrowDown: "ArrowDown",
+  ArrowLeft: "ArrowLeft",
+  ArrowRight: "ArrowRight",
+  // Common
+  Space: "Space",
+  Enter: "Enter",
+  Escape: "Escape",
+  Tab: "Tab",
+  Backspace: "Backspace",
+  // Modifiers
+  ShiftLeft: "ShiftLeft",
+  ShiftRight: "ShiftRight",
+  ControlLeft: "ControlLeft",
+  ControlRight: "ControlRight",
+  AltLeft: "AltLeft",
+  AltRight: "AltRight",
+  // Function keys
+  F1: "F1",
+  F2: "F2",
+  F3: "F3",
+  F4: "F4",
+  F5: "F5",
+  F6: "F6",
+  F7: "F7",
+  F8: "F8",
+  F9: "F9",
+  F10: "F10",
+  F11: "F11",
+  F12: "F12"
+};
+
+// src/graphics/camera.ts
+var FORWARD_REF = allocVec3(0, 0, -1);
+var RIGHT_REF = allocVec3(1, 0, 0);
+var Camera = class {
+  // Projection parameters
+  aspect = 1;
+  near = 0.1;
+  far = 100;
+  fovy = Math.PI / 4;
+  forward = allocVec3(0, 0, -1);
+  right = allocVec3(1, 0, 0);
+  up = allocVec3(0, 1, 0);
+  viewTarget = allocVec3(0, 0, -1);
+  transform = new Transform();
+  moveSpeed = 2;
+  yaw = 0;
+  constructor(aspect, near, far, fovy) {
+    this.aspect = aspect;
+    this.near = near;
+    this.far = far;
+    this.fovy = fovy;
+    this.transform.setRotation(this.yaw, 0, 1, 0);
+    this.transform.setTranslation(0, 0, 5);
+  }
+  getViewMatrix(view) {
+    this.deriveBasisVectors();
+    scaleAndAdd(this.viewTarget, this.transform.position, this.forward, 1);
+    return lookAt(view, this.transform.position, this.viewTarget, this.up);
+  }
+  getProjectionMatrix(projection) {
+    return perspective(projection, this.fovy, this.aspect, this.near, this.far);
+  }
+  processInput(input, deltaTime) {
+    this.updateMovement(input, deltaTime);
+  }
+  updateMovement(input, deltaTime) {
+    const speed = this.moveSpeed * deltaTime;
+    this.deriveBasisVectors();
+    if (input.isKeyPressed(KeyCode.W)) {
+      scaleAndAdd(this.transform.position, this.transform.position, this.forward, speed);
+    }
+    if (input.isKeyPressed(KeyCode.S)) {
+      scaleAndAdd(this.transform.position, this.transform.position, this.forward, -speed);
+    }
+    if (input.isKeyPressed(KeyCode.A)) {
+      scaleAndAdd(this.transform.position, this.transform.position, this.right, -speed);
+    }
+    if (input.isKeyPressed(KeyCode.D)) {
+      scaleAndAdd(this.transform.position, this.transform.position, this.right, speed);
+    }
+    if (input.isKeyPressed(KeyCode.ArrowUp)) {
+      translateY(this.transform.position, speed);
+    }
+    if (input.isKeyPressed(KeyCode.ArrowDown)) {
+      translateY(this.transform.position, -speed);
+    }
+    const rotSpeed = 1.5 * deltaTime;
+    if (input.isKeyPressed(KeyCode.ArrowLeft)) {
+      this.yaw += rotSpeed;
+    }
+    if (input.isKeyPressed(KeyCode.ArrowRight)) {
+      this.yaw -= rotSpeed;
+    }
+    this.transform.setRotation(this.yaw, 0, 1, 0);
+  }
+  deriveBasisVectors() {
+    this.transform.rotateVec3(this.forward, FORWARD_REF);
+    this.transform.rotateVec3(this.right, RIGHT_REF);
+    normalize(this.forward, this.forward);
+    normalize(this.right, this.right);
+    cross(this.up, this.right, this.forward);
+    normalize(this.up, this.up);
+  }
+};
+var camera_default = Camera;
+
+// src/graphics/renderer.ts
+var Renderer = class {
+  initialized = false;
+  init() {
+    if (this.initialized) return;
+    gl.enable(gl.DEPTH_TEST);
+    gl.clearColor(0.1, 0.1, 0.1, 1);
+    this.initialized = true;
+  }
+  render(scene3) {
+    this.init();
+    gl.viewport(0, 0, canvas.width, canvas.height);
+    gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
+    for (const entity of scene3.entities) {
+      if (entity.renderable) {
+        entity.renderable.draw(
+          scene3.camera,
+          scene3.directionalLight
+        );
+      }
+    }
+  }
+};
+
+// src/core/clock.ts
+var FixedStepClock = class {
+  fixedDT;
+  accumulator = 0;
+  lastTime = 0;
+  timeElapsed = 0;
+  constructor(fixedDT) {
+    this.fixedDT = fixedDT;
+    this.lastTime = performance.now() / 1e3;
+  }
+  tick() {
+    const now = performance.now() / 1e3;
+    let delta = now - this.lastTime;
+    this.lastTime = now;
+    this.timeElapsed += delta;
+    if (delta > 0.25) delta = 0.25;
+    this.accumulator += delta;
+    let steps = 0;
+    while (this.accumulator >= this.fixedDT) {
+      this.accumulator -= this.fixedDT;
+      steps++;
+    }
+    return steps;
+  }
+  get elapsedTime() {
+    return this.timeElapsed;
+  }
+};
+
+// math/vec2.ts
+function create3() {
+  return new Float32Array(2);
+}
+function allocVec2(a = 0, b = 0) {
+  const out = create3();
+  out[0] = a;
+  out[1] = b;
+  return out;
+}
+function setVec2(out, a, b) {
+  out[0] = a;
+  out[1] = b;
+}
+
+// src/inputSystem/inputManager.ts
+var EventQueue = class {
+  queue = [];
+  enqueue(event) {
+    this.queue.push(event);
+  }
+  consume() {
+    const events = [...this.queue];
+    this.queue = [];
+    return events;
+  }
+};
+var InputCollector = class {
+  constructor(queue) {
+    this.queue = queue;
+    window.addEventListener("keydown", (e) => {
+      this.queue.enqueue({
+        type: "Keydown",
+        key: e.code,
+        timestamp: performance.now()
+      });
+    });
+    window.addEventListener("keyup", (e) => {
+      this.queue.enqueue({
+        type: "Keyup",
+        key: e.code,
+        timestamp: performance.now()
+      });
+    });
+    window.addEventListener("mousemove", (e) => {
+      this.queue.enqueue({
+        type: "Mousemove",
+        dx: e.movementX,
+        dy: e.movementY,
+        timestamp: performance.now()
+      });
+    });
+  }
+};
+var InputManager = class {
+  static KeyCodes = KeyCode;
+  keyState = /* @__PURE__ */ new Map();
+  mouseButtonState = /* @__PURE__ */ new Map();
+  // button 1 = left, 2 = middle, 3 = right
+  mousePosDx = 0;
+  mousePosDy = 0;
+  mousePos = allocVec2(0, 0);
+  inputEventQueue;
+  inputCollector;
+  constructor() {
+    this.inputEventQueue = new EventQueue();
+    this.inputCollector = new InputCollector(this.inputEventQueue);
+  }
+  // consumes all the events captured in this particular frame and executes the corresponding commands
+  update() {
+    const events = this.inputEventQueue.consume();
+    this.mousePosDx = 0;
+    this.mousePosDy = 0;
+    for (const event of events) {
+      if (event.type === "Keydown") {
+        this.keyState.set(event.key, true);
+      } else if (event.type === "Keyup") {
+        this.keyState.set(event.key, false);
+      } else if (event.type === "Mousemove") {
+        this.mousePosDx += event.dx;
+        this.mousePosDy += event.dy;
+      } else if (event.type === "Mousedown") {
+        this.mouseButtonState.set(event.button, true);
+      } else if (event.type === "Mouseup") {
+        this.mouseButtonState.set(event.button, false);
+      }
+    }
+    setVec2(this.mousePos, this.mousePosDx, this.mousePosDy);
+  }
+  isKeyPressed(key) {
+    return this.keyState.get(key) ?? false;
+  }
+  getMousePosition() {
+    return this.mousePos;
+  }
+  isMouseButtonPressed(button) {
+    return false;
+  }
+};
+
+// src/core/engine.ts
+var Engine = class _Engine {
+  static instance;
+  renderer = new Renderer();
+  clock = new FixedStepClock(1 / 120);
+  input = new InputManager();
+  currScene;
+  createScene(camera) {
+    return new Scene(camera || new camera_default(canvas.width / canvas.height, 0.1, 100, Math.PI / 4));
+  }
+  setScene(scene3) {
+    this.currScene = scene3;
+  }
+  static getInstance() {
+    if (!_Engine.instance) {
+      _Engine.instance = new _Engine();
+    }
+    return _Engine.instance;
+  }
+  fixedUpdate(deltaTime) {
+    this.input.update();
+    this.currScene?.camera.processInput(this.input, deltaTime);
+    simulatePhysics(this.currScene.entities, deltaTime);
+  }
+  gameloop() {
+    const steps = this.clock.tick();
+    for (let i = 0; i < steps; i++) {
+      this.fixedUpdate(this.clock.fixedDT);
+    }
+    this.renderer.render(this.currScene);
+    requestAnimationFrame(() => this.gameloop());
+  }
+};
+var engine_default = Engine;
+
 // src/index.ts
-var scene = new Scene(new camera_default(canvas.width / canvas.height, 0.1, 100, Math.PI / 4));
-var renderer = new Renderer();
-var clock = new FixedStepClock(1 / 120);
-var input = new InputManager();
+var engine = engine_default.getInstance();
+var scene = engine.createScene();
+var scene2 = engine.createScene();
 scene.camera.transform.setTranslation(0, 2.5, 9);
-scene.setDirectionalLight(createDirectionalLight(0.5, -1, 0.3, 1, 0.95, 0.9, 1.5));
-scene.addPointLight(createPointLight(0, 3, 2, 1, 0.8, 0.6, 4, 15));
-scene.addPointLight(createPointLight(-3, 1, 0, 0.4, 0.6, 1, 2, 10));
-var pbrShader = Assets.getShader("pbr");
-var mats = {
-  ground: createPBRMaterial(pbrShader, { albedo: [0.2, 0.5, 0.2], metallic: 0, roughness: 0.8 }),
-  wall: createPBRMaterial(pbrShader, { albedo: [0.3, 0.4, 0.7], metallic: 0.1, roughness: 0.6 }),
-  bunny: createPBRMaterial(pbrShader, { albedo: [0.9, 0.75, 0.3], metallic: 0.7, roughness: 0.25 }),
-  horse: createPBRMaterial(pbrShader, { albedo: [0.8, 0.3, 0.5], metallic: 0.5, roughness: 0.4 }),
-  cubeA: createPBRMaterial(pbrShader, { albedo: [0.2, 0.7, 0.8], metallic: 0.9, roughness: 0.1 }),
-  cubeB: createPBRMaterial(pbrShader, { albedo: [0.9, 0.2, 0.2], metallic: 0, roughness: 0.5 })
+scene.setDirectionalLight(createDirectionalLight(allocVec3(0.5, 1, 0.3), allocVec3(1, 0.95, 0.9), 1.5));
+var shader = Assets.getShader("default");
+var defaultMaterial = {
+  shader,
+  color: { r: 0.8, g: 0.2, b: 0.2 }
 };
 var ground = createEntity({
   mesh: "cube",
-  material: mats.ground,
+  material: defaultMaterial,
   position: [0, -2.2, 0],
   scale: [10, 0.3, 10],
-  rigidbody: makeRigidbody("Static" /* Static */, 1, 0.2),
+  rigidbody: makeRigidbody("Static" /* Static */, 1, 0.5),
   collider: true,
   colliderDebug: false
 });
-var leftWall = createEntity({
-  mesh: "cube",
-  material: mats.wall,
-  position: [-4.5, -0.3, 0],
-  scale: [0.35, 2.5, 10],
-  rigidbody: makeRigidbody("Static" /* Static */, 1, 0.2),
-  collider: true,
-  colliderDebug: false
-});
-var rightWall = createEntity({
-  mesh: "cube",
-  material: mats.wall,
-  position: [4.5, -0.3, 0],
-  scale: [0.35, 2.5, 10],
-  rigidbody: makeRigidbody("Static" /* Static */, 1, 0.2),
-  collider: true,
-  colliderDebug: false
-});
-var bunny = createEntity({
-  mesh: "bunny",
-  material: mats.bunny,
-  position: [-2, 1.8, 0],
-  scale: [7.1, 7.1, 7.1],
-  rigidbody: makeRigidbody("Dynamic" /* Dynamic */, 2, 0.35, 1.1, 0, 0),
+var sphere = createEntity({
+  mesh: "sphere",
+  material: defaultMaterial,
+  position: [0, 4, 0],
+  scale: [2, 2, 2],
+  rigidbody: makeRigidbody("Dynamic" /* Dynamic */, 1, 0.6),
   collider: true,
   colliderDebug: true
 });
 scene.add(ground);
-scene.add(leftWall);
-scene.add(rightWall);
-scene.add(bunny);
-function fixedUpdate(deltaTime) {
-  input.update();
-  scene.camera.processInput(input, deltaTime);
-  simulatePhysics(scene.entities, deltaTime);
-}
-function gameloop() {
-  const steps = clock.tick();
-  for (let i = 0; i < steps; i++) {
-    fixedUpdate(clock.fixedDT);
-  }
-  renderer.render(scene, clock.elapsedTime);
-  requestAnimationFrame(gameloop);
-}
-requestAnimationFrame(gameloop);
+scene.add(sphere);
+scene2.add(ground);
+engine.setScene(scene);
+requestAnimationFrame(() => engine.gameloop());
 //# sourceMappingURL=index.js.map

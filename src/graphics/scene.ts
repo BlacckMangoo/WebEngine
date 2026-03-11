@@ -1,30 +1,27 @@
-import Camera from "@/src/graphics/camera";
-import {Renderable} from "@/src/graphics/renderable";
-import { Entity } from "../core/entity";
-import { Light, DirectionalLight, PointLight, LightType, createDirectionalLight } from "./light";
+import Camera from '@/src/graphics/camera'
+import { Entity } from '../core/entity'
+import { Light, createDirectionalLight } from './light'
+import { allocVec3 } from '@/math/vec3'
 
 export class Scene {
-    camera: Camera;
-    entities: Entity[] = [];
-    directionalLight: DirectionalLight;
-    pointLights: PointLight[] = [];
+  camera: Camera
+  entities: Entity[] = []
+  directionalLight: Light
 
-    constructor(camera: Camera) {
-        this.camera = camera;
-        this.directionalLight = createDirectionalLight(-0.5, -1.0, -0.5, 1.0, 1.0, 1.0, 1.0);
-    }
+  constructor(camera: Camera) {
+    this.camera = camera
+    this.directionalLight = createDirectionalLight(
+      allocVec3(-0.5, -1.0, -0.5),
+      allocVec3(1.0, 1.0, 1.0),
+      1.0
+    )
+  }
 
-    add(entity: Entity): void {
-        this.entities.push(entity);
-    }
+  add(entity: Entity): void {
+    this.entities.push(entity)
+  }
 
-    addPointLight(light: PointLight): void {
-        this.pointLights.push(light);
-    }
-
-    setDirectionalLight(light: DirectionalLight): void {
-        this.directionalLight = light;
-    }
-
+  setDirectionalLight(light: Light): void {
+    this.directionalLight = light
+  }
 }
-
