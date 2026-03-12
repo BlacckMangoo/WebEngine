@@ -811,7 +811,7 @@ function createAABBManifold(entityA, entityB, worldAABB, worldBABB) {
 var gravity = allocVec3(0, -0.81, 0);
 var POSITIONAL_SLOP = 1e-3;
 var POSITIONAL_PERCENT = 0.8;
-var SOLVER_ITERATIONS = 20;
+var SOLVER_ITERATIONS = 4;
 function makeRigidbody(type, mass, restitution, velocityX = 0, velocityY = 0, velocityZ = 0) {
   return {
     type,
@@ -1465,9 +1465,8 @@ var Renderable = class {
   transform;
   model = allocMat4();
   temp = allocMat4();
-  view = allocMat4();
-  projection = allocMat4();
   rotationAxis = allocVec3(0, 1, 0);
+  baseColor = new Float32Array(3);
   constructor(mesh, mat, transform) {
     this.mesh = mesh;
     this.mat = mat;
@@ -1480,24 +1479,13 @@ var Renderable = class {
     rotate(this.temp, this.model, rotationAngle, this.rotationAxis);
     scale(this.model, this.temp, this.transform.scaling);
   }
-  draw(cam, dirLight) {
-    this.mat.shader.use();
+  draw() {
     this.updateModelMatrix();
-    cam.getViewMatrix(this.view);
-    cam.getProjectionMatrix(this.projection);
     this.mat.shader.setMat4("u_model", this.model);
-    this.mat.shader.setMat4("u_view", this.view);
-    this.mat.shader.setMat4("u_projection", this.projection);
-    const baseColor = allocVec3(
-      this.mat.color.r,
-      this.mat.color.g,
-      this.mat.color.b
-    );
-    this.mat.shader.setVec3(
-      "u_light_dir",
-      dirLight ? dirLight.direction : allocVec3(1, 1, 1)
-    );
-    this.mat.shader.setVec3("u_base_color", baseColor);
+    this.baseColor[0] = this.mat.color.r;
+    this.baseColor[1] = this.mat.color.g;
+    this.baseColor[2] = this.mat.color.b;
+    this.mat.shader.setVec3("u_base_color", this.baseColor);
     this.mesh.bind(gl);
     this.mesh.draw(gl);
   }
@@ -1528,8 +1516,8 @@ var Scene = class {
   add(entity) {
     this.entities.push(entity);
   }
-  setDirectionalLight(light2) {
-    this.directionalLight = light2;
+  setDirectionalLight(light) {
+    this.directionalLight = light;
   }
 };
 
@@ -1705,6 +1693,9 @@ var camera_default = Camera;
 // src/graphics/renderer.ts
 var Renderer = class {
   initialized = false;
+  view = allocMat4();
+  projection = allocMat4();
+  defaultLightDir = allocVec3(1, 1, 1);
   init() {
     if (this.initialized) return;
     gl.enable(gl.DEPTH_TEST);
@@ -1715,9 +1706,17 @@ var Renderer = class {
     this.init();
     gl.viewport(0, 0, canvas.width, canvas.height);
     gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
+    scene2.camera.getViewMatrix(this.view);
+    scene2.camera.getProjectionMatrix(this.projection);
+    const lightDir = scene2.directionalLight?.direction ?? this.defaultLightDir;
     for (const entity of scene2.entities) {
       if (entity.renderable) {
-        entity.renderable.draw(scene2.camera, scene2.directionalLight);
+        const shader = entity.renderable.mat.shader;
+        shader.use();
+        shader.setMat4("u_view", this.view);
+        shader.setMat4("u_projection", this.projection);
+        shader.setVec3("u_light_dir", lightDir);
+        entity.renderable.draw();
       }
     }
   }
@@ -1729,6 +1728,7 @@ var FixedStepClock = class {
   accumulator = 0;
   lastTime = 0;
   timeElapsed = 0;
+  deltaTime = 0;
   constructor(fixedDT) {
     this.fixedDT = fixedDT;
     this.lastTime = performance.now() / 1e3;
@@ -1736,6 +1736,7 @@ var FixedStepClock = class {
   tick() {
     const now = performance.now() / 1e3;
     let delta = now - this.lastTime;
+    this.deltaTime = delta;
     this.lastTime = now;
     this.timeElapsed += delta;
     if (delta > 0.25) delta = 0.25;
@@ -1749,6 +1750,9 @@ var FixedStepClock = class {
   }
   get elapsedTime() {
     return this.timeElapsed;
+  }
+  get fps() {
+    return 1 / this.deltaTime;
   }
 };
 
@@ -1884,6 +1888,7 @@ var Engine = class _Engine {
       this.fixedUpdate(this.clock.fixedDT);
     }
     this.renderer.render(this.currScene);
+    console.log(this.clock.fps);
     requestAnimationFrame(() => this.gameloop());
   }
 };
@@ -1892,9 +1897,7 @@ var engine_default = Engine;
 // src/index.ts
 var engine = engine_default.getInstance();
 var scene = engine.createScene();
-var light = createDirectionalLight(allocVec3(0.5, 1, 0.3), { r: 1, g: 1, b: 1 }, 1.5);
 scene.camera.transform.setTranslation(0, 2.5, 9);
-scene.setDirectionalLight(light);
 scene.createEntity({
   mesh: "cube",
   material: Assets.getDefaultMaterial(),

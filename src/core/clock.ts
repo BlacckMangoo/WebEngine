@@ -3,6 +3,7 @@ export class FixedStepClock {
   private accumulator = 0
   private lastTime = 0
   private timeElapsed = 0
+  private deltaTime = 0 ; 
 
   constructor(fixedDT: number) {
     this.fixedDT = fixedDT
@@ -11,7 +12,8 @@ export class FixedStepClock {
 
   tick(): number {
     const now = performance.now() / 1000
-    let delta = now - this.lastTime
+    let delta = now - this.lastTime;
+    this.deltaTime = delta ; 
     this.lastTime = now
     this.timeElapsed += delta
 
@@ -26,10 +28,15 @@ export class FixedStepClock {
       steps++
     }
 
-    return steps
+    return steps;
   }
 
   public get elapsedTime(): number {
     return this.timeElapsed
+  }
+
+  public get fps() :number
+  {
+    return 1/this.deltaTime ;
   }
 }

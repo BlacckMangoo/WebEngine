@@ -6,9 +6,7 @@ import Engine from '@/src/core/engine'
 
 const engine = Engine.getInstance()
 const scene = engine.createScene()
-const light = createDirectionalLight(allocVec3(0.5, 1, 0.3), { r: 1, g: 1, b: 1 }, 1.5)
 scene.camera.transform.setTranslation(0, 2.5, 9)
-scene.setDirectionalLight(light)
 
 scene.createEntity({
   mesh: 'cube',
@@ -28,6 +26,7 @@ scene.createEntity({
   collider: true,
   colliderDebug: true,
 })
+
 engine.setScene(scene)
 
 requestAnimationFrame(() => engine.gameloop())

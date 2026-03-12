@@ -41,6 +41,8 @@ class Engine {
       this.fixedUpdate(this.clock.fixedDT)
     }
     this.renderer.render(this.currScene!)
+    //print fps 
+    console.log(this.clock.fps);
     requestAnimationFrame(() => this.gameloop())
   }
 }
