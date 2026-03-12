@@ -1,31 +1,23 @@
 import { Assets } from '@/src/assetManager'
-import { RigidbodyType, makeRigidbody } from './physics/physics'
-import { createDirectionalLight } from './graphics/light'
-import { allocVec3 } from '@/math/vec3'
 import Engine from '@/src/core/engine'
 
 const engine = Engine.getInstance()
 const scene = engine.createScene()
-scene.camera.transform.setTranslation(0, 2.5, 9)
+scene.camera.transform.setTranslation(-3, 2, 15)
 
 scene.createEntity({
   mesh: 'cube',
   material: Assets.getDefaultMaterial(),
   position: [0, -2.2, 0],
-  scale: [10, 0.3, 10],
-  rigidbody: makeRigidbody(RigidbodyType.Static, 1, 0.5),
-  collider: true,
-  colliderDebug: false,
+  scale: [10, 0.3, 10]
 })
 scene.createEntity({
-  mesh: 'sphere',
+  mesh: 'cube',
   material: Assets.getDefaultMaterial(),
-  position: [0, 4, 0],
-  scale: [2, 2, 2],
-  rigidbody: makeRigidbody(RigidbodyType.Dynamic, 1.0, 0.6),
-  collider: true,
-  colliderDebug: true,
+  position: [0, 2, 0],
+  scale: [2, 2, 2]
 })
+
 
 engine.setScene(scene)
 

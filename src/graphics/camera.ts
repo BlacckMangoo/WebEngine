@@ -36,7 +36,6 @@ class Camera {
     this.near = near
     this.far = far
     this.fovy = fovy
-    this.transform.setRotation(this.yaw, 0, 1, 0)
     this.transform.setTranslation(0, 0, 5)
   }
 
@@ -108,12 +107,9 @@ class Camera {
       this.yaw -= rotSpeed
     }
 
-    this.transform.setRotation(this.yaw, 0, 1, 0)
   }
 
   private deriveBasisVectors(): void {
-    this.transform.rotateVec3(this.forward, FORWARD_REF)
-    this.transform.rotateVec3(this.right, RIGHT_REF)
     normalize(this.forward, this.forward)
     normalize(this.right, this.right)
     cross(this.up, this.right, this.forward)

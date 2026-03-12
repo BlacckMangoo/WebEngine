@@ -69,8 +69,7 @@ export function aabbFromLocalToWorld(
     localAABB.max[2]
   )
 
-  // trasnform contains a translation , quaternion orientation and scaling
-  // apply in order : scale -> rotate -> translate ( affine transformation ) to get the world position of the corners
+  // Transform currently applies scale and translation only.
 
   const localCorners = [
     corner1,
@@ -101,11 +100,9 @@ export function aabbFromLocalToWorld(
       localCorner[2] * transform.scaling[2]
     )
 
-    const rotatedCorner = allocVec3()
-    transform.rotateVec3(rotatedCorner, scaledCorner)
 
     const worldCorner = allocVec3()
-    scaleAndAdd(worldCorner, transform.position, rotatedCorner, 1)
+    scaleAndAdd(worldCorner, transform.position, scaledCorner, 1)
 
     worldMin[0] = Math.min(worldMin[0], worldCorner[0])
     worldMin[1] = Math.min(worldMin[1], worldCorner[1])

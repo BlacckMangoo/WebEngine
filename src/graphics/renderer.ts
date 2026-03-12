@@ -5,6 +5,7 @@ import { allocVec3 } from '@/math/vec3'
 
 export class Renderer {
   private initialized = false
+  
   private view = allocMat4()
   private projection = allocMat4()
   private defaultLightDir = allocVec3(1, 1, 1)

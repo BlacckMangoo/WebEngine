@@ -13,7 +13,7 @@ var gl = getGL(canvas);
 
 // src/graphics/shaderSrc.ts
 var SHADERS = {
-  fragment: "#version 300 es\r\n\r\nprecision mediump float;\r\nin vec3 v_normal;\r\nuniform vec3 u_light_dir;\r\nuniform vec3 u_base_color;\r\nout vec4 fragColor;\r\n\r\nvoid main() {\r\n    //basic lambertian diffuse + ambient\r\n    vec3 n = normalize(v_normal);\r\n\r\n    vec3 l = normalize(u_light_dir);\r\n    float diff = max(dot(n, l), 0.0);\r\n    float ambient = 0.4;\r\n    vec3 color = u_base_color * (ambient + diff);\r\n\r\n    fragColor = vec4(color, 1.0);\r\n\r\n    }",
+  fragment: "#version 300 es\r\n\r\nprecision mediump float;\r\nin vec3 v_normal;\r\nuniform vec3 u_light_dir;\r\nuniform vec3 u_base_color;\r\nout vec4 fragColor;\r\n\r\nvoid main() {\r\n    //basic lambertian diffuse + ambient\r\n    vec3 n = normalize(v_normal);\r\n\r\n    vec3 l = normalize(u_light_dir);\r\n    float diff = max(dot(n, l), 0.0);\r\n    float ambient = 0.2;\r\n    vec3 color = u_base_color * (ambient + diff);\r\n\r\n    fragColor = vec4(color, 1.0);\r\n\r\n    }",
   vertex: "#version 300 es\r\n\r\nlayout(location = 0) in vec3 a_pos;\r\nlayout(location = 1) in vec3 a_normal;\r\n\r\n//MVP matrices\r\nuniform mat4 u_model;\r\nuniform mat4 u_view;\r\nuniform mat4 u_projection;\r\n\r\nout vec3 v_normal;\r\n\r\nvoid main() {\r\n\r\n    v_normal = mat3(u_model) * a_normal;\r\n\r\n    gl_Position = u_projection * u_view * u_model * vec4(a_pos, 1.0);\r\n}"
 };
 
@@ -590,6 +590,15 @@ Assets.registerModel("pyramid", PYRAMID);
 Assets.registerModel("sphere", createSphere(0.5, 3));
 Assets.registerShader("default", new Shader(SHADERS.vertex, SHADERS.fragment));
 
+// src/graphics/light.ts
+function createDirectionalLight(direction, color, intensity = 1) {
+  return {
+    direction,
+    color,
+    intensity
+  };
+}
+
 // math/vec3.ts
 function create() {
   return new Float32Array(3);
@@ -641,338 +650,6 @@ var AABB = class {
     return this.min[0] <= other.max[0] && this.max[0] >= other.min[0] && this.min[1] <= other.max[1] && this.max[1] >= other.min[1] && this.min[2] <= other.max[2] && this.max[2] >= other.min[2];
   }
 };
-function aabbFromLocalToWorld(localAABB, transform) {
-  const corner1 = allocVec3(
-    localAABB.min[0],
-    localAABB.min[1],
-    localAABB.min[2]
-  );
-  const corner2 = allocVec3(
-    localAABB.max[0],
-    localAABB.min[1],
-    localAABB.min[2]
-  );
-  const corner3 = allocVec3(
-    localAABB.min[0],
-    localAABB.max[1],
-    localAABB.min[2]
-  );
-  const corner4 = allocVec3(
-    localAABB.min[0],
-    localAABB.min[1],
-    localAABB.max[2]
-  );
-  const corner5 = allocVec3(
-    localAABB.max[0],
-    localAABB.max[1],
-    localAABB.min[2]
-  );
-  const corner6 = allocVec3(
-    localAABB.max[0],
-    localAABB.min[1],
-    localAABB.max[2]
-  );
-  const corner7 = allocVec3(
-    localAABB.min[0],
-    localAABB.max[1],
-    localAABB.max[2]
-  );
-  const corner8 = allocVec3(
-    localAABB.max[0],
-    localAABB.max[1],
-    localAABB.max[2]
-  );
-  const localCorners = [
-    corner1,
-    corner2,
-    corner3,
-    corner4,
-    corner5,
-    corner6,
-    corner7,
-    corner8
-  ];
-  const worldMin = allocVec3(
-    Number.POSITIVE_INFINITY,
-    Number.POSITIVE_INFINITY,
-    Number.POSITIVE_INFINITY
-  );
-  const worldMax = allocVec3(
-    Number.NEGATIVE_INFINITY,
-    Number.NEGATIVE_INFINITY,
-    Number.NEGATIVE_INFINITY
-  );
-  for (const localCorner of localCorners) {
-    const scaledCorner = allocVec3(
-      localCorner[0] * transform.scaling[0],
-      localCorner[1] * transform.scaling[1],
-      localCorner[2] * transform.scaling[2]
-    );
-    const rotatedCorner = allocVec3();
-    transform.rotateVec3(rotatedCorner, scaledCorner);
-    const worldCorner = allocVec3();
-    scaleAndAdd(worldCorner, transform.position, rotatedCorner, 1);
-    worldMin[0] = Math.min(worldMin[0], worldCorner[0]);
-    worldMin[1] = Math.min(worldMin[1], worldCorner[1]);
-    worldMin[2] = Math.min(worldMin[2], worldCorner[2]);
-    worldMax[0] = Math.max(worldMax[0], worldCorner[0]);
-    worldMax[1] = Math.max(worldMax[1], worldCorner[1]);
-    worldMax[2] = Math.max(worldMax[2], worldCorner[2]);
-  }
-  return new AABB(worldMin, worldMax);
-}
-
-// src/physics/manifold.ts
-var CollisionManifold = class {
-  entityA;
-  entityB;
-  normal;
-  penetration;
-  contactPoints = [];
-  constructor(entityA, entityB, normal, penetration) {
-    this.entityA = entityA;
-    this.entityB = entityB;
-    this.normal = normal;
-    this.penetration = penetration;
-  }
-};
-function getAABBCenter(aabb) {
-  return allocVec3(
-    (aabb.min[0] + aabb.max[0]) * 0.5,
-    (aabb.min[1] + aabb.max[1]) * 0.5,
-    (aabb.min[2] + aabb.max[2]) * 0.5
-  );
-}
-function getCollisionAxis(a, b) {
-  const overlapX = Math.min(a.max[0], b.max[0]) - Math.max(a.min[0], b.min[0]);
-  const overlapY = Math.min(a.max[1], b.max[1]) - Math.max(a.min[1], b.min[1]);
-  const overlapZ = Math.min(a.max[2], b.max[2]) - Math.max(a.min[2], b.min[2]);
-  if (overlapX <= 0 || overlapY <= 0 || overlapZ <= 0) {
-    return null;
-  }
-  const centerA = getAABBCenter(a);
-  const centerB = getAABBCenter(b);
-  let normal = allocVec3(1, 0, 0);
-  let penetration = overlapX;
-  if (overlapY < penetration) {
-    normal = allocVec3(0, 1, 0);
-    penetration = overlapY;
-  }
-  if (overlapZ < penetration) {
-    normal = allocVec3(0, 0, 1);
-    penetration = overlapZ;
-  }
-  if (normal[0] !== 0 && centerB[0] < centerA[0]) normal[0] = -1;
-  if (normal[1] !== 0 && centerB[1] < centerA[1]) normal[1] = -1;
-  if (normal[2] !== 0 && centerB[2] < centerA[2]) normal[2] = -1;
-  return { normal, penetration };
-}
-function buildContactPoint(a, b, normal, penetration) {
-  const centerA = getAABBCenter(a);
-  const centerB = getAABBCenter(b);
-  const posA = allocVec3(
-    centerA[0] + normal[0] * 0.5 * penetration,
-    centerA[1] + normal[1] * 0.5 * penetration,
-    centerA[2] + normal[2] * 0.5 * penetration
-  );
-  const posB = allocVec3(
-    centerB[0] - normal[0] * 0.5 * penetration,
-    centerB[1] - normal[1] * 0.5 * penetration,
-    centerB[2] - normal[2] * 0.5 * penetration
-  );
-  return {
-    posA,
-    posB,
-    normal: allocVec3(normal[0], normal[1], normal[2]),
-    penetration
-  };
-}
-function createAABBManifold(entityA, entityB, worldAABB, worldBABB) {
-  if (!worldAABB.intersects(worldBABB)) {
-    return null;
-  }
-  const axis = getCollisionAxis(worldAABB, worldBABB);
-  if (!axis) {
-    return null;
-  }
-  const manifold = new CollisionManifold(
-    entityA,
-    entityB,
-    axis.normal,
-    axis.penetration
-  );
-  manifold.contactPoints.push(
-    buildContactPoint(worldAABB, worldBABB, axis.normal, axis.penetration)
-  );
-  return manifold;
-}
-
-// src/physics/physics.ts
-var gravity = allocVec3(0, -0.81, 0);
-var POSITIONAL_SLOP = 1e-3;
-var POSITIONAL_PERCENT = 0.8;
-var SOLVER_ITERATIONS = 4;
-function makeRigidbody(type, mass, restitution, velocityX = 0, velocityY = 0, velocityZ = 0) {
-  return {
-    type,
-    mass,
-    restitution,
-    velocity: allocVec3(velocityX, velocityY, velocityZ),
-    acceleration: allocVec3(0, 0, 0)
-  };
-}
-function hasColliderAABB(entity) {
-  return Boolean(entity.physicsCollider?.aabb);
-}
-function isDynamicBody(entity) {
-  return Boolean(
-    entity.rigidbody && entity.rigidbody.type === "Dynamic" /* Dynamic */
-  );
-}
-function getInvMass(entity) {
-  if (!isDynamicBody(entity) || entity.rigidbody.mass <= 0) {
-    return 0;
-  }
-  return 1 / entity.rigidbody.mass;
-}
-function getRestitution(entity) {
-  if (!entity.rigidbody) {
-    return 0;
-  }
-  return Math.max(0, Math.min(1, entity.rigidbody.restitution));
-}
-function applyPositionalCorrection(entityA, entityB, normal, penetration) {
-  const invMassA = getInvMass(entityA);
-  const invMassB = getInvMass(entityB);
-  const invMassSum = invMassA + invMassB;
-  if (invMassSum <= 0) {
-    return;
-  }
-  const correctionMag = Math.max(penetration - POSITIONAL_SLOP, 0) * POSITIONAL_PERCENT / invMassSum;
-  if (invMassA > 0) {
-    entityA.transform.position[0] -= normal[0] * correctionMag * invMassA;
-    entityA.transform.position[1] -= normal[1] * correctionMag * invMassA;
-    entityA.transform.position[2] -= normal[2] * correctionMag * invMassA;
-  }
-  if (invMassB > 0) {
-    entityB.transform.position[0] += normal[0] * correctionMag * invMassB;
-    entityB.transform.position[1] += normal[1] * correctionMag * invMassB;
-    entityB.transform.position[2] += normal[2] * correctionMag * invMassB;
-  }
-}
-function applyContactImpulse(entityA, entityB, contact) {
-  const normal = contact.normal;
-  const invMassA = getInvMass(entityA);
-  const invMassB = getInvMass(entityB);
-  const invMassSum = invMassA + invMassB;
-  if (invMassSum <= 0) {
-    return;
-  }
-  const velocityA = entityA.rigidbody ? entityA.rigidbody.velocity : allocVec3(0, 0, 0);
-  const velocityB = entityB.rigidbody ? entityB.rigidbody.velocity : allocVec3(0, 0, 0);
-  const relativeVelocityX = velocityB[0] - velocityA[0];
-  const relativeVelocityY = velocityB[1] - velocityA[1];
-  const relativeVelocityZ = velocityB[2] - velocityA[2];
-  const velocityAlongNormal = relativeVelocityX * normal[0] + relativeVelocityY * normal[1] + relativeVelocityZ * normal[2];
-  if (velocityAlongNormal > 0) {
-    return;
-  }
-  const restitution = Math.min(getRestitution(entityA), getRestitution(entityB));
-  const impulseMagnitude = -(1 + restitution) * velocityAlongNormal / invMassSum;
-  const impulseX = impulseMagnitude * normal[0];
-  const impulseY = impulseMagnitude * normal[1];
-  const impulseZ = impulseMagnitude * normal[2];
-  if (isDynamicBody(entityA)) {
-    entityA.rigidbody.velocity[0] -= impulseX * invMassA;
-    entityA.rigidbody.velocity[1] -= impulseY * invMassA;
-    entityA.rigidbody.velocity[2] -= impulseZ * invMassA;
-  }
-  if (isDynamicBody(entityB)) {
-    entityB.rigidbody.velocity[0] += impulseX * invMassB;
-    entityB.rigidbody.velocity[1] += impulseY * invMassB;
-    entityB.rigidbody.velocity[2] += impulseZ * invMassB;
-  }
-}
-function getWorldAABB(entity) {
-  if (!hasColliderAABB(entity)) {
-    return null;
-  }
-  return aabbFromLocalToWorld(entity.physicsCollider.aabb, entity.transform);
-}
-function buildManifold(entityA, entityB) {
-  const worldAABB = getWorldAABB(entityA);
-  const worldBABB = getWorldAABB(entityB);
-  if (!worldAABB || !worldBABB) {
-    return null;
-  }
-  return createAABBManifold(entityA, entityB, worldAABB, worldBABB);
-}
-function resolveManifold(manifold) {
-  if (manifold.contactPoints.length === 0) {
-    return;
-  }
-  const contact = manifold.contactPoints[0];
-  if (!contact) {
-    return;
-  }
-  applyPositionalCorrection(
-    manifold.entityA,
-    manifold.entityB,
-    manifold.normal,
-    manifold.penetration
-  );
-  applyContactImpulse(manifold.entityA, manifold.entityB, contact);
-}
-function integrate(entity, deltaTime) {
-  if (!isDynamicBody(entity)) {
-    return;
-  }
-  entity.rigidbody.acceleration[0] = gravity[0];
-  entity.rigidbody.acceleration[1] = gravity[1];
-  entity.rigidbody.acceleration[2] = gravity[2];
-  scaleAndAdd(
-    entity.rigidbody.velocity,
-    entity.rigidbody.velocity,
-    entity.rigidbody.acceleration,
-    deltaTime
-  );
-  scaleAndAdd(
-    entity.transform.position,
-    entity.transform.position,
-    entity.rigidbody.velocity,
-    deltaTime
-  );
-}
-function simulatePhysics(entities, deltaTime) {
-  for (const entity of entities) {
-    integrate(entity, deltaTime);
-  }
-  const manifolds = [];
-  for (let i = 0; i < entities.length; i++) {
-    for (let j = i + 1; j < entities.length; j++) {
-      const entityA = entities[i];
-      const entityB = entities[j];
-      const manifold = buildManifold(entityA, entityB);
-      if (manifold) {
-        manifolds.push(manifold);
-      }
-    }
-  }
-  for (let iteration = 0; iteration < SOLVER_ITERATIONS; iteration++) {
-    for (const manifold of manifolds) {
-      resolveManifold(manifold);
-    }
-  }
-}
-
-// src/graphics/light.ts
-function createDirectionalLight(direction, color, intensity = 1) {
-  return {
-    direction,
-    color,
-    intensity
-  };
-}
 
 // src/graphics/mesh.ts
 var VertexLayout = class {
@@ -1133,86 +810,10 @@ var Mesh = class _Mesh {
   }
 };
 
-// math/quaternion.ts
-function allocQuaternion(x = 0, y = 0, z = 0, w = 1) {
-  return {
-    imaginary: allocVec3(x, y, z),
-    scalar: w
-  };
-}
-function multiplyQuaternions(res, q1, q2) {
-  const w1 = q1.scalar;
-  const x1 = q1.imaginary[0];
-  const y1 = q1.imaginary[1];
-  const z1 = q1.imaginary[2];
-  const w2 = q2.scalar;
-  const x2 = q2.imaginary[0];
-  const y2 = q2.imaginary[1];
-  const z2 = q2.imaginary[2];
-  const w = w1 * w2 - x1 * x2 - y1 * y2 - z1 * z2;
-  const x = w1 * x2 + x1 * w2 + y1 * z2 - z1 * y2;
-  const y = w1 * y2 - x1 * z2 + y1 * w2 + z1 * x2;
-  const z = w1 * z2 + x1 * y2 - y1 * x2 + z1 * w2;
-  res.imaginary[0] = x;
-  res.imaginary[1] = y;
-  res.imaginary[2] = z;
-  res.scalar = w;
-}
-function norm(q) {
-  const x = q.imaginary[0];
-  const y = q.imaginary[1];
-  const z = q.imaginary[2];
-  const w = q.scalar;
-  return Math.sqrt(x * x + y * y + z * z + w * w);
-}
-function quaternionFromAxisAngle(axis, angle) {
-  const len = Math.hypot(axis[0], axis[1], axis[2]);
-  const nx = axis[0] / len;
-  const ny = axis[1] / len;
-  const nz = axis[2] / len;
-  const half = angle / 2;
-  const s = Math.sin(half);
-  return {
-    imaginary: allocVec3(nx * s, ny * s, nz * s),
-    scalar: Math.cos(half)
-  };
-}
-function rotateVec3ByQuaternion(out, v, q) {
-  const x = q.imaginary[0], y = q.imaginary[1], z = q.imaginary[2], w = q.scalar;
-  const vx = v[0], vy = v[1], vz = v[2];
-  const tx = 2 * (y * vz - z * vy);
-  const ty = 2 * (z * vx - x * vz);
-  const tz = 2 * (x * vy - y * vx);
-  out[0] = vx + w * tx + (y * tz - z * ty);
-  out[1] = vy + w * ty + (z * tx - x * tz);
-  out[2] = vz + w * tz + (x * ty - y * tx);
-}
-function normalizeQuaternion(out, q) {
-  const length = norm(q);
-  if (length <= 1e-8) {
-    out.imaginary[0] = 0;
-    out.imaginary[1] = 0;
-    out.imaginary[2] = 0;
-    out.scalar = 1;
-    return;
-  }
-  const inv = 1 / length;
-  out.imaginary[0] = q.imaginary[0] * inv;
-  out.imaginary[1] = q.imaginary[1] * inv;
-  out.imaginary[2] = q.imaginary[2] * inv;
-  out.scalar = q.scalar * inv;
-}
-function composeQuaternion(out, lhs, rhs) {
-  multiplyQuaternions(out, lhs, rhs);
-  normalizeQuaternion(out, out);
-}
-
 // src/graphics/transform.ts
 var Transform = class {
   position = allocVec3(0, 0, 0);
   scaling = allocVec3(1, 1, 1);
-  rotation = allocQuaternion(0, 0, 0, 1);
-  // (x, y, z) imaginary part, w scalar part -> rotation axis is (x, y, z) and angle is 2 * acos(w)
   revision = 0;
   get version() {
     return this.revision;
@@ -1240,42 +841,6 @@ var Transform = class {
     this.scaling[2] = z;
     this.markChanged();
     return this;
-  }
-  setRotation(angle, axisX, axisY, axisZ) {
-    const axis = allocVec3(axisX, axisY, axisZ);
-    const rotation = quaternionFromAxisAngle(axis, angle);
-    this.rotation.imaginary[0] = rotation.imaginary[0];
-    this.rotation.imaginary[1] = rotation.imaginary[1];
-    this.rotation.imaginary[2] = rotation.imaginary[2];
-    this.rotation.scalar = rotation.scalar;
-    normalizeQuaternion(this.rotation, this.rotation);
-    this.markChanged();
-    return this;
-  }
-  rotateByAxisAngle(angle, axisX, axisY, axisZ) {
-    const delta = quaternionFromAxisAngle(allocVec3(axisX, axisY, axisZ), angle);
-    composeQuaternion(this.rotation, delta, this.rotation);
-    this.markChanged();
-    return this;
-  }
-  rotateVec3(out, v) {
-    rotateVec3ByQuaternion(out, v, this.rotation);
-  }
-  getRotationAxisAngle(outAxis) {
-    normalizeQuaternion(this.rotation, this.rotation);
-    const w = Math.max(-1, Math.min(1, this.rotation.scalar));
-    const angle = 2 * Math.acos(w);
-    const s = Math.sqrt(1 - w * w);
-    if (s < 1e-6) {
-      outAxis[0] = 0;
-      outAxis[1] = 1;
-      outAxis[2] = 0;
-      return 0;
-    }
-    outAxis[0] = this.rotation.imaginary[0] / s;
-    outAxis[1] = this.rotation.imaginary[1] / s;
-    outAxis[2] = this.rotation.imaginary[2] / s;
-    return angle;
   }
 };
 
@@ -1416,47 +981,6 @@ function scale(out, a, v) {
   out[15] = a[15];
   return out;
 }
-function rotate(out, a, rad, axis) {
-  const x = axis[0], y = axis[1], z = axis[2];
-  const len = Math.hypot(x, y, z);
-  if (len < 1e-6) return null;
-  const s = Math.sin(rad);
-  const c = Math.cos(rad);
-  const t = 1 - c;
-  const a00 = a[0], a01 = a[1], a02 = a[2], a03 = a[3];
-  const a10 = a[4], a11 = a[5], a12 = a[6], a13 = a[7];
-  const a20 = a[8], a21 = a[9], a22 = a[10], a23 = a[11];
-  const rlen = 1 / len;
-  const nx = x * rlen;
-  const ny = y * rlen;
-  const nz = z * rlen;
-  const b00 = nx * nx * t + c;
-  const b01 = ny * nx * t + nz * s;
-  const b02 = nz * nx * t - ny * s;
-  const b10 = nx * ny * t - nz * s;
-  const b11 = ny * ny * t + c;
-  const b12 = nz * ny * t + nx * s;
-  const b20 = nx * nz * t + ny * s;
-  const b21 = ny * nz * t - nx * s;
-  const b22 = nz * nz * t + c;
-  out[0] = a00 * b00 + a10 * b01 + a20 * b02;
-  out[1] = a01 * b00 + a11 * b01 + a21 * b02;
-  out[2] = a02 * b00 + a12 * b01 + a22 * b02;
-  out[3] = a03 * b00 + a13 * b01 + a23 * b02;
-  out[4] = a00 * b10 + a10 * b11 + a20 * b12;
-  out[5] = a01 * b10 + a11 * b11 + a21 * b12;
-  out[6] = a02 * b10 + a12 * b11 + a22 * b12;
-  out[7] = a03 * b10 + a13 * b11 + a23 * b12;
-  out[8] = a00 * b20 + a10 * b21 + a20 * b22;
-  out[9] = a01 * b20 + a11 * b21 + a21 * b22;
-  out[10] = a02 * b20 + a12 * b21 + a22 * b22;
-  out[11] = a03 * b20 + a13 * b21 + a23 * b22;
-  out[12] = a[12];
-  out[13] = a[13];
-  out[14] = a[14];
-  out[15] = a[15];
-  return out;
-}
 
 // src/graphics/renderable.ts
 var Renderable = class {
@@ -1464,8 +988,6 @@ var Renderable = class {
   mat;
   transform;
   model = allocMat4();
-  temp = allocMat4();
-  rotationAxis = allocVec3(0, 1, 0);
   baseColor = new Float32Array(3);
   constructor(mesh, mat, transform) {
     this.mesh = mesh;
@@ -1475,9 +997,7 @@ var Renderable = class {
   updateModelMatrix() {
     identity(this.model);
     translate(this.model, this.model, this.transform.position);
-    const rotationAngle = this.transform.getRotationAxisAngle(this.rotationAxis);
-    rotate(this.temp, this.model, rotationAngle, this.rotationAxis);
-    scale(this.model, this.temp, this.transform.scaling);
+    scale(this.model, this.model, this.transform.scaling);
   }
   draw() {
     this.updateModelMatrix();
@@ -1508,8 +1028,7 @@ var Scene = class {
     const mesh = new Mesh(Assets.getModel(options.mesh), gl);
     const transform = new Transform().setTranslation(options.position[0], options.position[1], options.position[2]).setScale(options.scale[0], options.scale[1], options.scale[2]);
     const renderable = new Renderable(mesh, options.material ?? Assets.getDefaultMaterial(), transform);
-    const physicsCollider = options.collider ? { aabb: mesh.aabb, showDebug: options.colliderDebug ?? false } : null;
-    const entity = { transform, renderable, physicsCollider, rigidbody: options.rigidbody };
+    const entity = { transform, renderable };
     this.entities.push(entity);
     return entity;
   }
@@ -1615,7 +1134,6 @@ var Camera = class {
     this.near = near;
     this.far = far;
     this.fovy = fovy;
-    this.transform.setRotation(this.yaw, 0, 1, 0);
     this.transform.setTranslation(0, 0, 5);
   }
   getViewMatrix(view) {
@@ -1677,11 +1195,8 @@ var Camera = class {
     if (input.isKeyPressed(KeyCode.ArrowRight)) {
       this.yaw -= rotSpeed;
     }
-    this.transform.setRotation(this.yaw, 0, 1, 0);
   }
   deriveBasisVectors() {
-    this.transform.rotateVec3(this.forward, FORWARD_REF);
-    this.transform.rotateVec3(this.right, RIGHT_REF);
     normalize(this.forward, this.forward);
     normalize(this.right, this.right);
     cross(this.up, this.right, this.forward);
@@ -1880,9 +1395,11 @@ var Engine = class _Engine {
   fixedUpdate(deltaTime) {
     this.input.update();
     this.currScene?.camera.processInput(this.input, deltaTime);
-    simulatePhysics(this.currScene.entities, deltaTime);
   }
   gameloop() {
+    if (this.currScene == null) {
+      throw new Error("must create a scene to render");
+    }
     const steps = this.clock.tick();
     for (let i = 0; i < steps; i++) {
       this.fixedUpdate(this.clock.fixedDT);
@@ -1897,24 +1414,18 @@ var engine_default = Engine;
 // src/index.ts
 var engine = engine_default.getInstance();
 var scene = engine.createScene();
-scene.camera.transform.setTranslation(0, 2.5, 9);
+scene.camera.transform.setTranslation(-3, 2, 15);
 scene.createEntity({
   mesh: "cube",
   material: Assets.getDefaultMaterial(),
   position: [0, -2.2, 0],
-  scale: [10, 0.3, 10],
-  rigidbody: makeRigidbody("Static" /* Static */, 1, 0.5),
-  collider: true,
-  colliderDebug: false
+  scale: [10, 0.3, 10]
 });
 scene.createEntity({
-  mesh: "sphere",
+  mesh: "cube",
   material: Assets.getDefaultMaterial(),
-  position: [0, 4, 0],
-  scale: [2, 2, 2],
-  rigidbody: makeRigidbody("Dynamic" /* Dynamic */, 1, 0.6),
-  collider: true,
-  colliderDebug: true
+  position: [0, 2, 0],
+  scale: [2, 2, 2]
 });
 engine.setScene(scene);
 requestAnimationFrame(() => engine.gameloop());

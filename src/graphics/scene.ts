@@ -7,7 +7,6 @@ import { Mesh } from './mesh'
 import { gl } from '@/src/graphics/context'
 import { Transform } from './transform'
 import { Renderable, Material } from './renderable'
-import { PhysicsCollider, Rigidbody } from '../physics/physics'
 
 type Vec3Tuple = [number, number, number]
 
@@ -16,9 +15,6 @@ export interface CreateEntityOptions {
   material?: Material
   position: Vec3Tuple
   scale: Vec3Tuple
-  rigidbody: Rigidbody
-  collider: boolean
-  colliderDebug?: boolean
 }
 
 export class Scene {
@@ -41,10 +37,8 @@ export class Scene {
       .setTranslation(options.position[0], options.position[1], options.position[2])
       .setScale(options.scale[0], options.scale[1], options.scale[2])
     const renderable = new Renderable(mesh, options.material ?? Assets.getDefaultMaterial(), transform)
-    const physicsCollider: PhysicsCollider | null = options.collider
-      ? { aabb: mesh.aabb, showDebug: options.colliderDebug ?? false }
-      : null
-    const entity: Entity = { transform, renderable, physicsCollider, rigidbody: options.rigidbody }
+
+    const entity: Entity = { transform, renderable }
     this.entities.push(entity)
     return entity
   }

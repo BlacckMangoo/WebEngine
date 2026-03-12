@@ -2,8 +2,7 @@ import { Mesh } from '@/src/graphics/mesh'
 import { Shader } from '@/src/graphics/shader'
 import { Transform } from '@/src/graphics/transform'
 import { Color } from '@/src/graphics/color'
-import { allocVec3 } from '@/math/vec3'
-import { allocMat4, identity, scale, rotate, translate } from '@/math/mat4'
+import { allocMat4, identity, scale, translate } from '@/math/mat4'
 import { gl } from '@/src/graphics/context'
 
 export interface Material {
@@ -17,8 +16,6 @@ export class Renderable {
   transform: Transform
 
   private model = allocMat4()
-  private temp = allocMat4()
-  private rotationAxis = allocVec3(0, 1, 0)
   private baseColor = new Float32Array(3)
 
   constructor(mesh: Mesh, mat: Material, transform: Transform) {
@@ -28,12 +25,10 @@ export class Renderable {
   }
 
   private updateModelMatrix(): void {
-    // Model: M = T * R * S
+    // With rotation intentionally removed for now, the model transform is T * S.
     identity(this.model)
     translate(this.model, this.model, this.transform.position)
-    const rotationAngle = this.transform.getRotationAxisAngle(this.rotationAxis)
-    rotate(this.temp, this.model, rotationAngle, this.rotationAxis)
-    scale(this.model, this.temp, this.transform.scaling)
+    scale(this.model, this.model, this.transform.scaling)
   }
 
   draw(): void {

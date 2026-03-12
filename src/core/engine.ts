@@ -4,7 +4,6 @@ import Camera from '@/src/graphics/camera'
 import { Renderer } from '@/src/graphics/renderer'
 import { FixedStepClock } from '@/src/core/clock'
 import { InputManager } from '@/src/inputSystem/inputManager'
-import { simulatePhysics } from '@/src/physics/physics'
 
 class Engine {
   private static instance: Engine
@@ -32,17 +31,22 @@ class Engine {
   public fixedUpdate(deltaTime: number): void {
     this.input.update()
     this.currScene?.camera.processInput(this.input, deltaTime)
-    simulatePhysics(this.currScene!.entities, deltaTime)
   }
 
   public gameloop(): void {
+
+    if( this.currScene == null)
+    {
+      throw new Error("must create a scene to render");
+    }
+
     const steps = this.clock.tick()
     for (let i = 0; i < steps; i++) {
       this.fixedUpdate(this.clock.fixedDT)
     }
     this.renderer.render(this.currScene!)
     //print fps 
-    console.log(this.clock.fps);
+    console.log(this.clock.fps)
     requestAnimationFrame(() => this.gameloop())
   }
 }
