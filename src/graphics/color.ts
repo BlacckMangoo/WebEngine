@@ -62,3 +62,9 @@ export const COLORS = {
   MAGENTA,
   WHITE,
 }
+
+export function colorToArray(color: Color ,arr :Float32Array): void {
+      arr[0] = color.r;
+      arr[1] = color.g;
+      arr[2] = color.b;
+}

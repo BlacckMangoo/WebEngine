@@ -1,6 +1,4 @@
 import { gl } from '@/src/graphics/context'
-import { AABB } from '@/src/physics/aabb'
-import { allocVec3 } from '@/math/vec3'
 
 type MeshPrimitive = GLenum
 
@@ -34,79 +32,6 @@ let pos3norm3 = new VertexLayout(24, [
   { location: 1, size: 3, type: gl.FLOAT, normalized: false, offset: 12 },
 ])
 
-function createAABBWireframeData(aabb: AABB): ModelData {
-  const minX = aabb.min[0]
-  const minY = aabb.min[1]
-  const minZ = aabb.min[2]
-
-  const maxX = aabb.max[0]
-  const maxY = aabb.max[1]
-  const maxZ = aabb.max[2]
-
-  const vertices = [
-    minX,
-    minY,
-    minZ,
-    maxX,
-    minY,
-    minZ,
-    maxX,
-    maxY,
-    minZ,
-    minX,
-    maxY,
-    minZ,
-    minX,
-    minY,
-    maxZ,
-    maxX,
-    minY,
-    maxZ,
-    maxX,
-    maxY,
-    maxZ,
-    minX,
-    maxY,
-    maxZ,
-  ]
-
-  const indices = [
-    0, 1, 1, 2, 2, 3, 3, 0, 4, 5, 5, 6, 6, 7, 7, 4, 0, 4, 1, 5, 2, 6, 3, 7,
-  ]
-
-  return { vertices, indices }
-}
-
-export function createAABBFromVertices(vertices: number[]): AABB {
-  let minX = Number.POSITIVE_INFINITY
-  let minY = Number.POSITIVE_INFINITY
-  let minZ = Number.POSITIVE_INFINITY
-  let maxX = Number.NEGATIVE_INFINITY
-  let maxY = Number.NEGATIVE_INFINITY
-  let maxZ = Number.NEGATIVE_INFINITY
-
-  let x: number, y: number, z: number
-
-  for (let i = 0; i < vertices.length; i += 3) {
-    x = vertices[i]
-    y = vertices[i + 1]
-    z = vertices[i + 2]
-
-    if (x < minX) minX = x
-    if (y < minY) minY = y
-    if (z < minZ) minZ = z
-
-    if (x > maxX) maxX = x
-    if (y > maxY) maxY = y
-    if (z > maxZ) maxZ = z
-  }
-
-  const min = allocVec3(minX, minY, minZ)
-  const max = allocVec3(maxX, maxY, maxZ)
-
-  return new AABB(min, max)
-}
-
 export class Mesh {
   vertexData: Float32Array = new Float32Array()
   indices: Uint32Array = new Uint32Array()
@@ -114,7 +39,6 @@ export class Mesh {
   ibo: WebGLBuffer
   layout: VertexLayout
   vertexCount: number = 0
-  aabb: AABB
   primitive: MeshPrimitive
 
   constructor(
@@ -145,8 +69,6 @@ export class Mesh {
       this.vertexData[i * 6 + 5] = normals[i * 3 + 2]
     }
 
-    this.aabb = createAABBFromVertices(data.vertices)
-
     // Create buffers
     this.vbo = gl.createBuffer() as WebGLBuffer
     this.ibo = gl.createBuffer() as WebGLBuffer
@@ -160,11 +82,7 @@ export class Mesh {
     gl.bufferData(gl.ARRAY_BUFFER, this.vertexData, gl.STATIC_DRAW)
   }
 
-  static createAABBWireframe(aabb: AABB, gl: WebGL2RenderingContext): Mesh {
-    const wireframeData = createAABBWireframeData(aabb)
-    return new Mesh(wireframeData, gl, gl.LINES)
-  }
-
+  
   bind(gl: WebGL2RenderingContext): void {
     gl.bindBuffer(gl.ARRAY_BUFFER, this.vbo)
     gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, this.ibo)
@@ -186,6 +104,8 @@ export class Mesh {
     if (this.primitive === gl.LINES) {
       gl.lineWidth(4.0)
     }
+
+    
     gl.drawElements(this.primitive, this.indices.length, gl.UNSIGNED_INT, 0)
   }
 }

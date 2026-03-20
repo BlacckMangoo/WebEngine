@@ -39,4 +39,8 @@ export class FixedStepClock {
   {
     return 1/this.deltaTime ;
   }
+
+  public get frameDT(): number {
+    return this.deltaTime
+  }
 }

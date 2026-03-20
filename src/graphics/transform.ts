@@ -1,40 +1,39 @@
-import { allocVec3, Vec3 } from '@/math/vec3'
-export class Transform {
-  position: Vec3 = allocVec3(0, 0, 0)
-  scaling: Vec3 = allocVec3(1, 1, 1)
+import { allocMat4, Mat4, multiply } from "@/math/mat4";
+import { allocQuaternion, getRotationMatrix, Quaternion, setQuaternion } from "@/math/quaternion";
+import { allocVec3, setVec3, Vec3 } from "@/math/vec3";
+import { GetTransformMatrix,GetScaleMatrix } from "@/math/utils";
+class Transform {
+    position :Vec3 = allocVec3(0, 0, 0)
+    scale :Vec3 = allocVec3(1, 1, 1);
+    orientattion : Quaternion = allocQuaternion(0, 0, 0, 1);
 
-  private revision = 0
+    setScale(scale: Vec3): void {  
+        setVec3(this.scale, scale[0], scale[1], scale[2])
+      }
 
-  get version(): number {
-    return this.revision
-  }
+    setPosition(pos: Vec3): void {
+        setVec3(this.position, pos[0], pos[1], pos[2])
+    }
 
-  private markChanged(): void {
-    this.revision++
-  }
+    setOrientation(orientation: Quaternion): void {
+        setQuaternion(this.orientattion, orientation)
+    }
 
-  setTranslation(x: number, y: number, z: number): this {
-    this.position[0] = x
-    this.position[1] = y
-    this.position[2] = z
-    this.markChanged()
-    return this
-  }
 
-  translateBy(dx: number, dy: number, dz: number): this {
-    this.position[0] += dx
-    this.position[1] += dy
-    this.position[2] += dz
-    this.markChanged()
-    return this
-  }
-
-  setScale(x: number, y: number, z: number): this {
-    this.scaling[0] = x
-    this.scaling[1] = y
-    this.scaling[2] = z
-    this.markChanged()
-    return this
-  }
+    getModelMatrix(): Mat4 {
+        const model = allocMat4()
+        const rotationmatrix = allocMat4()
+        const tmat = GetTransformMatrix(this.position)
+        const smat = GetScaleMatrix(this.scale)
+        getRotationMatrix(rotationmatrix, this.orientattion)
+        // Note: The order of multiplication is important
+        multiply(model, model, tmat)
+        multiply(model, model, rotationmatrix)
+        multiply(model, model, smat)
+        return model
+    }
+    
 
 }
+
+export default Transform;

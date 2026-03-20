@@ -3,6 +3,7 @@ import { Scene } from '@/src/graphics/scene'
 import { allocMat4 } from '@/math/mat4'
 import { allocVec3 } from '@/math/vec3'
 
+
 export class Renderer {
   private initialized = false
   
@@ -22,17 +23,29 @@ export class Renderer {
     gl.viewport(0, 0, canvas.width, canvas.height)
     gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT)
 
-    scene.camera.getViewMatrix(this.view)
-    scene.camera.getProjectionMatrix(this.projection)
-    const lightDir = scene.directionalLight?.direction ?? this.defaultLightDir
+    this.view = scene.cam.getViewMatrix()
+    this.projection = scene.cam.getProjectionMatrix()
+
+    gl.depthFunc(gl.LEQUAL)
+    gl.depthMask(false)
+    scene.cam.skybox.draw(this.view, this.projection, scene.cam.getPosition())
+    gl.depthMask(true)
+    gl.depthFunc(gl.LESS)
+
+    const lightDir = this.defaultLightDir;
+    const cameraPos = scene.cam.getPosition()
 
     for (const entity of scene.entities) {
       if (entity.renderable) {
         const shader = entity.renderable.mat.shader
         shader.use()
+        shader.setMat4('u_model', entity.transform.getModelMatrix())
+        shader.setVec3('u_light_dir', lightDir)
+        scene.cam.skybox.cubemap.bind(1)
+        shader.setInt('u_skybox', 1)
+        shader.setVec3('u_camera_pos', cameraPos)
         shader.setMat4('u_view', this.view)
         shader.setMat4('u_projection', this.projection)
-        shader.setVec3('u_light_dir', lightDir)
         entity.renderable.draw()
       }
     }

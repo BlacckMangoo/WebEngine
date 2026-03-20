@@ -182,127 +182,60 @@ export function multiply(out: Mat4, a: Mat4, b: Mat4): Mat4 {
   return out
 }
 
-// transform matrix
-
-export function translate(out: Mat4, a: Mat4, v: Vec3): Mat4 {
-  const x = v[0],
-    y = v[1],
-    z = v[2]
-
+export function Inverse(out: Mat4, a: Mat4): void  {
   const a00 = a[0],
-    a01 = a[1],
-    a02 = a[2],
-    a03 = a[3]
-  const a10 = a[4],
+    a10 = a[1],
+    a20 = a[2],
+    a30 = a[3]
+  const a01 = a[4],
     a11 = a[5],
-    a12 = a[6],
-    a13 = a[7]
-  const a20 = a[8],
-    a21 = a[9],
+    a21 = a[6],
+    a31 = a[7]
+  const a02 = a[8],
+    a12 = a[9],
     a22 = a[10],
-    a23 = a[11]
-
-  out[0] = a00
-  out[1] = a01
-  out[2] = a02
-  out[3] = a03
-  out[4] = a10
-  out[5] = a11
-  out[6] = a12
-  out[7] = a13
-  out[8] = a20
-  out[9] = a21
-  out[10] = a22
-  out[11] = a23
-
-  out[12] = a00 * x + a10 * y + a20 * z + a[12]
-  out[13] = a01 * x + a11 * y + a21 * z + a[13]
-  out[14] = a02 * x + a12 * y + a22 * z + a[14]
-  out[15] = a03 * x + a13 * y + a23 * z + a[15]
-
-  return out
-}
-
-export function scale(out: Mat4, a: Mat4, v: Vec3): Mat4 {
-  const x = v[0],
-    y = v[1],
-    z = v[2]
-
-  out[0] = a[0] * x
-  out[1] = a[1] * x
-  out[2] = a[2] * x
-  out[3] = a[3] * x
-  out[4] = a[4] * y
-  out[5] = a[5] * y
-  out[6] = a[6] * y
-  out[7] = a[7] * y
-  out[8] = a[8] * z
-  out[9] = a[9] * z
-  out[10] = a[10] * z
-  out[11] = a[11] * z
-  out[12] = a[12]
-  out[13] = a[13]
-  out[14] = a[14]
-  out[15] = a[15]
-  return out
-}
-
-export function rotate(out: Mat4, a: Mat4, rad: number, axis: Vec3): Mat4 {
-  const x = axis[0],
-    y = axis[1],
-    z = axis[2]
-  const len = Math.hypot(x, y, z)
-  if (len < 1e-6) return null as any
-
-  const s = Math.sin(rad)
-  const c = Math.cos(rad)
-  const t = 1 - c
-
-  const a00 = a[0],
-    a01 = a[1],
-    a02 = a[2],
-    a03 = a[3]
-  const a10 = a[4],
-    a11 = a[5],
-    a12 = a[6],
-    a13 = a[7]
-  const a20 = a[8],
-    a21 = a[9],
-    a22 = a[10],
-    a23 = a[11]
-
-  // normalize axis
-  const rlen = 1 / len
-  const nx = x * rlen
-  const ny = y * rlen
-  const nz = z * rlen
-
-  // rotation matrix components
-  const b00 = nx * nx * t + c
-  const b01 = ny * nx * t + nz * s
-  const b02 = nz * nx * t - ny * s
-  const b10 = nx * ny * t - nz * s
-  const b11 = ny * ny * t + c
-  const b12 = nz * ny * t + nx * s
-  const b20 = nx * nz * t + ny * s
-  const b21 = ny * nz * t - nx * s
-  const b22 = nz * nz * t + c
-
-  out[0] = a00 * b00 + a10 * b01 + a20 * b02
-  out[1] = a01 * b00 + a11 * b01 + a21 * b02
-  out[2] = a02 * b00 + a12 * b01 + a22 * b02
-  out[3] = a03 * b00 + a13 * b01 + a23 * b02
-  out[4] = a00 * b10 + a10 * b11 + a20 * b12
-  out[5] = a01 * b10 + a11 * b11 + a21 * b12
-  out[6] = a02 * b10 + a12 * b11 + a22 * b12
-  out[7] = a03 * b10 + a13 * b11 + a23 * b12
-  out[8] = a00 * b20 + a10 * b21 + a20 * b22
-  out[9] = a01 * b20 + a11 * b21 + a21 * b22
-  out[10] = a02 * b20 + a12 * b21 + a22 * b22
-  out[11] = a03 * b20 + a13 * b21 + a23 * b22
-  out[12] = a[12]
-  out[13] = a[13]
-  out[14] = a[14]
-  out[15] = a[15]
-  return out
+    a32 = a[11]
+  const a03 = a[12],
+    a13 = a[13],
+    a23 = a[14],
+    a33 = a[15],
+    b00 = a00 * a11 - a01 * a10,
+    b01 = a00 * a21 - a01 * a20,
+    b02 = a00 * a31 - a01 * a30,
+    b03 = a10 * a21 - a11 * a20,
+    b04 = a10 * a31 - a11 * a30,
+    b05 = a20 * a31 - a21 * a30,
+    b06 = a02 * a13 - a03 * a12,
+    b07 = a02 * a23 - a03 * a22,
+    b08 = a12 * a23 - a13 * a22,
+    b09 = a00 * b08 - a01 * b07 + a02 * b06,
+    b10 = a10 * b08 - a11 * b07 + a12 * b06,
+    b11 = a20 * b08 - a21 * b07 + a22 * b06,
+    b12 = a03 * b05 - a02 * b04 + a01 * b03,
+    b13 = a13 * b05 - a12 * b04 + a11 * b03,
+    b14 = a23 * b05 - a22 * b04 + a21 * b03,
+    b15 = a02 * b02 - a03 * b01 + a00 * b00,
+    b16 = a12 * b02 - a13 * b01 + a10 * b00,
+    b17 = a22 * b02 - a23 * b01 + a20 * b00
+  let det = a00 * b00 + a01 * b03 + a02 * b04 + a03 * b05
+  if (!det) {
+    return null as any
+  }
+  det = 1.0 / det
+  out[0] = b00 * det
+  out[1] = (-a10 * b00 + a11 * b03 - a12 * b04) * det
+  out[2] = (a20 * b00 - a21 * b03 + a22 * b04) * det
+  out[3] = (-a30 * b00 + a31 * b03 - a32 * b04) * det
+  out[4] = b01 * det
+  out[5] = (-a00 * b01 + a01 * b07 - a03 * b06) * det
+  out[6] = (a20 * b01 - a21 * b07 + a23 * b06) * det
+  out[7] = (-a30 * b01 + a31 * b07 - a33 * b06) * det
+  out[8] = b02 * det
+  out[9] = (-a00 * b02 + a01 * b08 - a02 * b06) * det
+  out[10] = (a10 * b02 - a11 * b08 + a12 * b06) * det
+  out[11] = (-a30 * b02 + a31 * b08 - a32 * b06) * det
+  out[12] = b03 * det
+  out[13] = (-a00 * b03 + a01 * b05 - a02 * b04) * det
+  out[14] = (a10 * b03 - a11 * b05 + a12 * b04) * det
+  out[15] = (-a20 * b03 + a21 * b05 - a22 * b04) * det
 }

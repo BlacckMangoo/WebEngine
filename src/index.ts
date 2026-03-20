@@ -1,22 +1,25 @@
+import { allocQuaternion } from '@/math/quaternion'
+import { allocVec3 } from '@/math/vec3'
 import { Assets } from '@/src/assetManager'
 import Engine from '@/src/core/engine'
+import Transform from './graphics/transform'
 
 const engine = Engine.getInstance()
 const scene = engine.createScene()
-scene.camera.transform.setTranslation(-3, 2, 15)
+
+const bunnytransform = new Transform()
+bunnytransform.setPosition(allocVec3(0, 0, -5))
+bunnytransform.setOrientation(allocQuaternion(0, 0, 0, 0))
+
 
 scene.createEntity({
-  mesh: 'cube',
+  mesh: 'bunny',
   material: Assets.getDefaultMaterial(),
-  position: [0, -2.2, 0],
-  scale: [10, 0.3, 10]
+  transform : bunnytransform
 })
-scene.createEntity({
-  mesh: 'cube',
-  material: Assets.getDefaultMaterial(),
-  position: [0, 2, 0],
-  scale: [2, 2, 2]
-})
+
+
+
 
 
 engine.setScene(scene)

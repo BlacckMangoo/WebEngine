@@ -1,4 +1,5 @@
-import { allocVec3, Vec3 } from './vec3'
+import { Mat4 } from './mat4'
+import { allocVec3, normalize, Vec3 } from './vec3'
 
 //Quaternion -> Vec3(x,y,z)(Imaginiary) + number(w)(scalar part)
 
@@ -17,6 +18,17 @@ export function allocQuaternion(
     imaginary: allocVec3(x, y, z),
     scalar: w,
   }
+}
+
+
+export function setQuaternion(
+  out: Quaternion,
+  q: Quaternion
+): void {
+  out.imaginary[0] = q.imaginary[0] 
+  out.imaginary[1] = q.imaginary[1]
+  out.imaginary[2] = q.imaginary[2]
+  out.scalar = q.scalar
 }
 
 
@@ -131,6 +143,66 @@ export function composeQuaternion(
   normalizeQuaternion(out, out)
 }
 
+export function rotateQuaternionAroundAxis(
+  out: Quaternion,
+  q: Quaternion,
+  axis: Vec3,
+  angle: number
+): void {
+  const unitAxis = allocVec3()
+  normalize(unitAxis, axis)
+  const delta = quaternionFromAxisAngle(unitAxis, angle)
+  composeQuaternion(out, delta, q)
+}
+
+export function slerp(
+  out: Quaternion,
+  from: Quaternion,
+  to: Quaternion,
+  t: number
+): void {
+  const clampedT = Math.max(0, Math.min(1, t))
+  const ax = from.imaginary[0]
+  const ay = from.imaginary[1]
+  const az = from.imaginary[2]
+  const aw = from.scalar
+
+  let bx = to.imaginary[0]
+  let by = to.imaginary[1]
+  let bz = to.imaginary[2]
+  let bw = to.scalar
+
+  let cosTheta = ax * bx + ay * by + az * bz + aw * bw
+
+  if (cosTheta < 0) {
+    cosTheta = -cosTheta
+    bx = -bx
+    by = -by
+    bz = -bz
+    bw = -bw
+  }
+
+  if (cosTheta > 0.9995) {
+    out.imaginary[0] = ax + clampedT * (bx - ax)
+    out.imaginary[1] = ay + clampedT * (by - ay)
+    out.imaginary[2] = az + clampedT * (bz - az)
+    out.scalar = aw + clampedT * (bw - aw)
+    normalizeQuaternion(out, out)
+    return
+  }
+
+  const theta = Math.acos(cosTheta)
+  const sinTheta = Math.sin(theta)
+  const scaleA = Math.sin((1 - clampedT) * theta) / sinTheta
+  const scaleB = Math.sin(clampedT * theta) / sinTheta
+
+  out.imaginary[0] = scaleA * ax + scaleB * bx
+  out.imaginary[1] = scaleA * ay + scaleB * by
+  out.imaginary[2] = scaleA * az + scaleB * bz
+  out.scalar = scaleA * aw + scaleB * bw
+  normalizeQuaternion(out, out)
+}
+
 
 export function multiplyQuaternions(
   res: Quaternion,
@@ -196,4 +268,57 @@ export function inverse(q: Quaternion): Quaternion {
     ),
     scalar: conjugateQ.scalar * invNormQ,
   }
+}
+
+
+// actual stuff useful in the engine 
+
+//Get Euler Angles from a quaternion
+export function getEulerAngles(q: Quaternion): Vec3 {
+  const x = q.imaginary[0]
+  const y = q.imaginary[1]
+  const z = q.imaginary[2]
+  const w = q.scalar
+  const roll = Math.atan2(2 * (w * x + y * z), 1 - 2 * (x * x + y * y))
+  const pitch = Math.asin(2 * (w * y - z * x))
+  const yaw = Math.atan2(2 * (w * z + x * y), 1 - 2 * (y * y + z * z))
+  return allocVec3(roll, pitch, yaw)
+}
+
+// get Rotation Matrix from a quaternion
+
+export function getRotationMatrix(out: Mat4, q: Quaternion): void{
+  const x = q.imaginary[0]
+  const y = q.imaginary[1]
+  const z = q.imaginary[2]
+  const w = q.scalar
+  const xx = x * x
+  const yy = y * y
+  const zz = z * z
+  const xy = x * y
+  const xz = x * z
+  const yz = y * z
+  const wx = w * x
+  const wy = w * y
+  const wz = w * z
+
+  out[0] = 1 - 2 * (yy + zz)
+  out[1] = 2 * (xy + wz)
+  out[2] = 2 * (xz - wy)
+  out[3] = 0
+
+  out[4] = 2 * (xy - wz)
+  out[5] = 1 - 2 * (xx + zz)
+  out[6] = 2 * (yz + wx)
+  out[7] = 0
+
+  out[8] = 2 * (xz + wy)
+  out[9] = 2 * (yz - wx)
+  out[10] = 1 - 2 * (xx + yy)
+  out[11] = 0
+
+  out[12] = 0
+  out[13] = 0
+  out[14] = 0
+  out[15] = 1
 }

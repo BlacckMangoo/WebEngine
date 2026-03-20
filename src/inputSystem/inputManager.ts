@@ -4,6 +4,7 @@
 
 import { allocVec2, setVec2, Vec2 } from '@/math/vec2'
 import { KeyCode } from '@/src/inputSystem/keycodes'
+import { canvas } from '@/src/graphics/context'
 
 type InputEventType =
   | {
@@ -60,6 +61,28 @@ class InputCollector {
         type: 'Mousemove',
         dx: e.movementX,
         dy: e.movementY,
+        timestamp: performance.now(),
+      })
+    })
+
+    window.addEventListener('mousedown', (e) => {
+      if (e.button === 0 && document.pointerLockElement !== canvas) {
+        void canvas.requestPointerLock()
+      }
+      this.queue.enqueue({
+        type: 'Mousedown',
+        button: e.button,
+        timestamp: performance.now(),
+      })
+    })
+
+    window.addEventListener('mouseup', (e) => {
+      if (e.button === 0 && document.pointerLockElement === canvas) {
+        document.exitPointerLock()
+      }
+      this.queue.enqueue({
+        type: 'Mouseup',
+        button: e.button,
         timestamp: performance.now(),
       })
     })
@@ -120,7 +143,6 @@ export class InputManager {
   }
 
   isMouseButtonPressed(button: number): boolean {
-    // Implement mouse button state tracking if needed
-    return false
+    return this.mouseButtonState.get(button) ?? false
   }
 }

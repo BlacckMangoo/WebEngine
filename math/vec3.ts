@@ -1,3 +1,5 @@
+import { Quaternion } from "./quaternion"
+
 export type Vec3 = Float32Array & { length: 3 }
 
 function create(): Vec3 {
@@ -68,3 +70,4 @@ export function scaleAndAdd(out: Vec3, a: Vec3, b: Vec3, scale: number): Vec3 {
   out[2] = a[2] + b[2] * scale
   return out
 }
+
