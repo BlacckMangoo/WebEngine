@@ -6,19 +6,13 @@ type CubeFaceKey = keyof CubeMapEntry
 
 const FACE_ORDER: CubeFaceKey[] = ['px', 'py', 'pz', 'nx', 'ny', 'nz']
 
-// Corrective face rotations for this asset set.
-const FACE_ROTATION_RAD: Partial<Record<CubeFaceKey, number>> = {
-	pz: -Math.PI,
-	nz: Math.PI,
-}
-
 const FACE_TARGETS: Record<CubeFaceKey, number> = {
 	px: gl.TEXTURE_CUBE_MAP_POSITIVE_X,
-	ny: gl.TEXTURE_CUBE_MAP_NEGATIVE_X,
-	py: gl.TEXTURE_CUBE_MAP_POSITIVE_Z,
-	nx: gl.TEXTURE_CUBE_MAP_NEGATIVE_Z,
-	pz: gl.TEXTURE_CUBE_MAP_POSITIVE_Y,
-	nz: gl.TEXTURE_CUBE_MAP_NEGATIVE_Y,
+	nx: gl.TEXTURE_CUBE_MAP_NEGATIVE_X,
+	py: gl.TEXTURE_CUBE_MAP_POSITIVE_Y,
+	ny: gl.TEXTURE_CUBE_MAP_NEGATIVE_Y,
+	pz: gl.TEXTURE_CUBE_MAP_POSITIVE_Z,
+	nz: gl.TEXTURE_CUBE_MAP_NEGATIVE_Z,
 }
 
 export class Cubemap {
@@ -74,7 +68,7 @@ export class Cubemap {
 			const loadedFaces = await Promise.all(
 				FACE_ORDER.map(async (face) => {
 					const image = await loadImage(this.entry[face])
-					return { face, image: this.getFaceUploadSource(face, image) }
+					return { face, image }
 				})
 			)
 
@@ -101,25 +95,9 @@ export class Cubemap {
 			console.error(`Failed to load cubemap "${this.name}"`, error)
 		}
 	}
-
-	private getFaceUploadSource(face: CubeFaceKey, image: HTMLImageElement): TexImageSource {
-		const rotation = FACE_ROTATION_RAD[face] ?? 0
-		if (rotation === 0) return image
-
-		const canvas = document.createElement('canvas')
-		canvas.width = image.width
-		canvas.height = image.height
-		const ctx = canvas.getContext('2d')
-		if (!ctx) return image
-
-		ctx.translate(canvas.width * 0.5, canvas.height * 0.5)
-		ctx.rotate(rotation)
-		ctx.drawImage(image, -canvas.width * 0.5, -canvas.height * 0.5)
-		return canvas
-	}
 }
 
-export function createCubemap(name: CubeMapName = 'skyBox'): Cubemap {
+export function createCubemap(name: CubeMapName = 'skybox'): Cubemap {
 	return new Cubemap(name)
 }
 

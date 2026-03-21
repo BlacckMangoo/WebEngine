@@ -9,7 +9,7 @@ import Skybox from "./skybox";
 
 class Camera {
     transform : Transform = new Transform();
-    skybox: Skybox = new Skybox();
+    skybox: Skybox = new Skybox("skybox");
     fov : number = 45;
     aspect : number = canvas .width / canvas.height;
     near : number = 0.1;

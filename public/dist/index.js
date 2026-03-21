@@ -1106,13 +1106,21 @@ var KeyCode = {
 
 // src/graphics/cubemapData.ts
 var CUBEMAPS = {
-  skyBox: {
-    px: "./assets/cubemaps/skyBox/px.jpg",
-    nx: "./assets/cubemaps/skyBox/nx.jpg",
-    py: "./assets/cubemaps/skyBox/py.jpg",
-    ny: "./assets/cubemaps/skyBox/ny.jpg",
-    pz: "./assets/cubemaps/skyBox/pz.jpg",
-    nz: "./assets/cubemaps/skyBox/nz.jpg"
+  Lycksele3: {
+    px: "./assets/cubemaps/Lycksele3/px.jpg",
+    nx: "./assets/cubemaps/Lycksele3/nx.jpg",
+    py: "./assets/cubemaps/Lycksele3/py.jpg",
+    ny: "./assets/cubemaps/Lycksele3/ny.jpg",
+    pz: "./assets/cubemaps/Lycksele3/pz.jpg",
+    nz: "./assets/cubemaps/Lycksele3/nz.jpg"
+  },
+  skybox: {
+    px: "./assets/cubemaps/skybox/px.jpg",
+    nx: "./assets/cubemaps/skybox/nx.jpg",
+    py: "./assets/cubemaps/skybox/py.jpg",
+    ny: "./assets/cubemaps/skybox/ny.jpg",
+    pz: "./assets/cubemaps/skybox/pz.jpg",
+    nz: "./assets/cubemaps/skybox/nz.jpg"
   }
 };
 
@@ -1126,17 +1134,13 @@ async function loadImage(url) {
 
 // src/graphics/cubemap.ts
 var FACE_ORDER = ["px", "py", "pz", "nx", "ny", "nz"];
-var FACE_ROTATION_RAD = {
-  pz: -Math.PI,
-  nz: Math.PI
-};
 var FACE_TARGETS = {
   px: gl.TEXTURE_CUBE_MAP_POSITIVE_X,
-  ny: gl.TEXTURE_CUBE_MAP_NEGATIVE_X,
-  py: gl.TEXTURE_CUBE_MAP_POSITIVE_Z,
-  nx: gl.TEXTURE_CUBE_MAP_NEGATIVE_Z,
-  pz: gl.TEXTURE_CUBE_MAP_POSITIVE_Y,
-  nz: gl.TEXTURE_CUBE_MAP_NEGATIVE_Y
+  nx: gl.TEXTURE_CUBE_MAP_NEGATIVE_X,
+  py: gl.TEXTURE_CUBE_MAP_POSITIVE_Y,
+  ny: gl.TEXTURE_CUBE_MAP_NEGATIVE_Y,
+  pz: gl.TEXTURE_CUBE_MAP_POSITIVE_Z,
+  nz: gl.TEXTURE_CUBE_MAP_NEGATIVE_Z
 };
 var Cubemap = class {
   name;
@@ -1185,7 +1189,7 @@ var Cubemap = class {
       const loadedFaces = await Promise.all(
         FACE_ORDER.map(async (face) => {
           const image = await loadImage(this.entry[face]);
-          return { face, image: this.getFaceUploadSource(face, image) };
+          return { face, image };
         })
       );
       this.bind(0);
@@ -1210,21 +1214,8 @@ var Cubemap = class {
       console.error(`Failed to load cubemap "${this.name}"`, error);
     }
   }
-  getFaceUploadSource(face, image) {
-    const rotation = FACE_ROTATION_RAD[face] ?? 0;
-    if (rotation === 0) return image;
-    const canvas2 = document.createElement("canvas");
-    canvas2.width = image.width;
-    canvas2.height = image.height;
-    const ctx = canvas2.getContext("2d");
-    if (!ctx) return image;
-    ctx.translate(canvas2.width * 0.5, canvas2.height * 0.5);
-    ctx.rotate(rotation);
-    ctx.drawImage(image, -canvas2.width * 0.5, -canvas2.height * 0.5);
-    return canvas2;
-  }
 };
-function createCubemap(name = "skyBox") {
+function createCubemap(name = "skybox") {
   return new Cubemap(name);
 }
 
@@ -1234,11 +1225,11 @@ var Skybox = class {
   shader;
   cubemap;
   model;
-  constructor() {
+  constructor(cubemapName) {
     const model = Assets.getModel("cube");
     this.mesh = new Mesh(model, gl);
     this.shader = new Shader(SHADERS.skyboxVertex, SHADERS.skyboxFragment);
-    this.cubemap = createCubemap("skyBox");
+    this.cubemap = createCubemap(cubemapName);
     this.model = GetTransformMatrix(allocVec3(0, 0, 0));
   }
   draw(view, projection, cameraPosition) {
@@ -1258,7 +1249,7 @@ var skybox_default = Skybox;
 // src/graphics/camera.ts
 var Camera = class {
   transform = new transform_default();
-  skybox = new skybox_default();
+  skybox = new skybox_default("skybox");
   fov = 45;
   aspect = canvas.width / canvas.height;
   near = 0.1;
@@ -1618,12 +1609,22 @@ var engine_default = Engine;
 var engine = engine_default.getInstance();
 var scene = engine.createScene();
 var bunnytransform = new transform_default();
-bunnytransform.setPosition(allocVec3(0, 0, -5));
+bunnytransform.setPosition(allocVec3(0, -0.85, 5));
+bunnytransform.setScale(allocVec3(10, 10, 10));
 bunnytransform.setOrientation(allocQuaternion(0, 0, 0, 0));
+var groundtransform = new transform_default();
+groundtransform.setPosition(allocVec3(0, -1, 2));
+groundtransform.setOrientation(allocQuaternion(0, 0, 0, 0));
+groundtransform.setScale(allocVec3(10, 1, 10));
 scene.createEntity({
   mesh: "bunny",
   material: Assets.getDefaultMaterial(),
   transform: bunnytransform
+});
+scene.createEntity({
+  mesh: "cube",
+  material: Assets.getDefaultMaterial(),
+  transform: groundtransform
 });
 engine.setScene(scene);
 requestAnimationFrame(() => engine.gameloop());
