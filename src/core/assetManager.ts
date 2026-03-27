@@ -10,6 +10,8 @@ import {
   CYLINDER,
   GRID,
   GRID_CONFIG,
+  SPHERE,
+  SPHERE_WIREFRAME,
   QUAD,
   TRIANGLE,
   PYRAMID,
@@ -82,6 +84,8 @@ Assets.registerModel('bunny', bunny as ModelData)
 // Register primitive models
 Assets.registerModel('cube', CUBE)
 Assets.registerModel('cubeWireframe', CUBE_WIREFRAME)
+Assets.registerModel('sphere', SPHERE)
+Assets.registerModel('sphereWireframe', SPHERE_WIREFRAME)
 Assets.registerModel('cylinder', CYLINDER)
 Assets.registerModel('grid', GRID)
 if (GRID_CONFIG.includeAxes && GRID_CONFIG.axisCylinder) {

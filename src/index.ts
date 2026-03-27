@@ -19,9 +19,17 @@ scene.createEntity({
   primitive: gl.LINES,
 })
 
+scene.createEntity({
+  mesh: 'sphere',
+  transform: new Transform(-2, 0, -5),
+})
+
+scene.createEntity({
+  mesh: 'sphereWireframe',
+  transform: new Transform(-4, 0, -5),
+  primitive: gl.LINES,
+})
+
 createGrid(scene, allocVec3(0, -0.6, -5), 10, true)
-
-
 engine.setScene(scene)
-
 requestAnimationFrame(() => engine.gameloop())

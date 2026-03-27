@@ -458,6 +458,120 @@ export function createCylinder(
 
 export const CYLINDER: ModelData = createCylinder(1, 24)
 
+export function createSphere(radius: number, divisions: number): ModelData {
+  const safeRadius = Math.max(0.001, radius)
+  const latSegments = Math.max(3, Math.floor(divisions))
+  const lonSegments = latSegments * 2
+
+  const vertices: number[] = []
+  const normals: number[] = []
+  const uvs: number[] = []
+  const indices: number[] = []
+
+  for (let lat = 0; lat <= latSegments; lat++) {
+    const v = lat / latSegments
+    const theta = Math.PI * v
+    const sinTheta = Math.sin(theta)
+    const cosTheta = Math.cos(theta)
+
+    for (let lon = 0; lon <= lonSegments; lon++) {
+      const u = lon / lonSegments
+      const phi = Math.PI * 2 * u
+      const sinPhi = Math.sin(phi)
+      const cosPhi = Math.cos(phi)
+
+      const nx = sinTheta * cosPhi
+      const ny = cosTheta
+      const nz = sinTheta * sinPhi
+
+      vertices.push(nx * safeRadius, ny * safeRadius, nz * safeRadius)
+      normals.push(nx, ny, nz)
+      uvs.push(u, 1 - v)
+    }
+  }
+
+  const ring = lonSegments + 1
+  for (let lat = 0; lat < latSegments; lat++) {
+    const row = lat * ring
+    const nextRow = (lat + 1) * ring
+
+    for (let lon = 0; lon < lonSegments; lon++) {
+      const i0 = row + lon
+      const i1 = i0 + 1
+      const i2 = nextRow + lon
+      const i3 = i2 + 1
+
+      indices.push(i0, i2, i1)
+      indices.push(i1, i2, i3)
+    }
+  }
+
+  return {
+    vertices,
+    normals,
+    uvs,
+    indices,
+  }
+}
+
+export function createSphereWireframe(radius: number, divisions: number): ModelData {
+  const safeRadius = Math.max(0.001, radius)
+  const latSegments = Math.max(3, Math.floor(divisions))
+  const lonSegments = latSegments * 2
+
+  const vertices: number[] = []
+  const normals: number[] = []
+  const uvs: number[] = []
+  const indices: number[] = []
+
+  for (let lat = 0; lat <= latSegments; lat++) {
+    const v = lat / latSegments
+    const theta = Math.PI * v
+    const sinTheta = Math.sin(theta)
+    const cosTheta = Math.cos(theta)
+
+    for (let lon = 0; lon <= lonSegments; lon++) {
+      const u = lon / lonSegments
+      const phi = Math.PI * 2 * u
+      const sinPhi = Math.sin(phi)
+      const cosPhi = Math.cos(phi)
+
+      const nx = sinTheta * cosPhi
+      const ny = cosTheta
+      const nz = sinTheta * sinPhi
+
+      vertices.push(nx * safeRadius, ny * safeRadius, nz * safeRadius)
+      normals.push(0, 0, 0)
+      uvs.push(0, 0)
+    }
+  }
+
+  const ring = lonSegments + 1
+  for (let lat = 0; lat < latSegments; lat++) {
+    const row = lat * ring
+    const nextRow = (lat + 1) * ring
+
+    for (let lon = 0; lon < lonSegments; lon++) {
+      const i0 = row + lon
+      const i1 = i0 + 1
+      const i2 = nextRow + lon
+
+      indices.push(i0, i1)
+      indices.push(i0, i2)
+    }
+  }
+
+  return {
+    vertices,
+    normals,
+    uvs,
+    indices,
+  }
+}
+
+export const SPHERE: ModelData = createSphere(0.5, 18)
+export const SPHERE_WIREFRAME: ModelData = createSphereWireframe(0.5, 18)
+
 // Plane (quad) - useful for testing
 export const QUAD: ModelData = {
   vertices: [-1.0, -1.0, 0.0, 1.0, -1.0, 0.0, 1.0, 1.0, 0.0, -1.0, 1.0, 0.0],

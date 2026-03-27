@@ -1050,6 +1050,99 @@ function createCylinder(height, divisions, radius = 0.5) {
   };
 }
 var CYLINDER = createCylinder(1, 24);
+function createSphere(radius, divisions) {
+  const safeRadius = Math.max(1e-3, radius);
+  const latSegments = Math.max(3, Math.floor(divisions));
+  const lonSegments = latSegments * 2;
+  const vertices = [];
+  const normals = [];
+  const uvs = [];
+  const indices = [];
+  for (let lat = 0; lat <= latSegments; lat++) {
+    const v = lat / latSegments;
+    const theta = Math.PI * v;
+    const sinTheta = Math.sin(theta);
+    const cosTheta = Math.cos(theta);
+    for (let lon = 0; lon <= lonSegments; lon++) {
+      const u = lon / lonSegments;
+      const phi = Math.PI * 2 * u;
+      const sinPhi = Math.sin(phi);
+      const cosPhi = Math.cos(phi);
+      const nx = sinTheta * cosPhi;
+      const ny = cosTheta;
+      const nz = sinTheta * sinPhi;
+      vertices.push(nx * safeRadius, ny * safeRadius, nz * safeRadius);
+      normals.push(nx, ny, nz);
+      uvs.push(u, 1 - v);
+    }
+  }
+  const ring = lonSegments + 1;
+  for (let lat = 0; lat < latSegments; lat++) {
+    const row = lat * ring;
+    const nextRow = (lat + 1) * ring;
+    for (let lon = 0; lon < lonSegments; lon++) {
+      const i0 = row + lon;
+      const i1 = i0 + 1;
+      const i2 = nextRow + lon;
+      const i3 = i2 + 1;
+      indices.push(i0, i2, i1);
+      indices.push(i1, i2, i3);
+    }
+  }
+  return {
+    vertices,
+    normals,
+    uvs,
+    indices
+  };
+}
+function createSphereWireframe(radius, divisions) {
+  const safeRadius = Math.max(1e-3, radius);
+  const latSegments = Math.max(3, Math.floor(divisions));
+  const lonSegments = latSegments * 2;
+  const vertices = [];
+  const normals = [];
+  const uvs = [];
+  const indices = [];
+  for (let lat = 0; lat <= latSegments; lat++) {
+    const v = lat / latSegments;
+    const theta = Math.PI * v;
+    const sinTheta = Math.sin(theta);
+    const cosTheta = Math.cos(theta);
+    for (let lon = 0; lon <= lonSegments; lon++) {
+      const u = lon / lonSegments;
+      const phi = Math.PI * 2 * u;
+      const sinPhi = Math.sin(phi);
+      const cosPhi = Math.cos(phi);
+      const nx = sinTheta * cosPhi;
+      const ny = cosTheta;
+      const nz = sinTheta * sinPhi;
+      vertices.push(nx * safeRadius, ny * safeRadius, nz * safeRadius);
+      normals.push(0, 0, 0);
+      uvs.push(0, 0);
+    }
+  }
+  const ring = lonSegments + 1;
+  for (let lat = 0; lat < latSegments; lat++) {
+    const row = lat * ring;
+    const nextRow = (lat + 1) * ring;
+    for (let lon = 0; lon < lonSegments; lon++) {
+      const i0 = row + lon;
+      const i1 = i0 + 1;
+      const i2 = nextRow + lon;
+      indices.push(i0, i1);
+      indices.push(i0, i2);
+    }
+  }
+  return {
+    vertices,
+    normals,
+    uvs,
+    indices
+  };
+}
+var SPHERE = createSphere(0.5, 18);
+var SPHERE_WIREFRAME = createSphereWireframe(0.5, 18);
 var QUAD = {
   vertices: [-1, -1, 0, 1, -1, 0, 1, 1, 0, -1, 1, 0],
   normals: [0, 0, 1, 0, 0, 1, 0, 0, 1, 0, 0, 1],
@@ -1287,6 +1380,8 @@ Assets.registerModel("horse", horse_default);
 Assets.registerModel("bunny", stanfordbunny_default);
 Assets.registerModel("cube", CUBE);
 Assets.registerModel("cubeWireframe", CUBE_WIREFRAME);
+Assets.registerModel("sphere", SPHERE);
+Assets.registerModel("sphereWireframe", SPHERE_WIREFRAME);
 Assets.registerModel("cylinder", CYLINDER);
 Assets.registerModel("grid", GRID);
 if (GRID_CONFIG.includeAxes && GRID_CONFIG.axisCylinder) {
@@ -2203,6 +2298,15 @@ scene.createEntity({
 scene.createEntity({
   mesh: "cubeWireframe",
   transform: new transform_default(2, 0, -5),
+  primitive: gl.LINES
+});
+scene.createEntity({
+  mesh: "sphere",
+  transform: new transform_default(-2, 0, -5)
+});
+scene.createEntity({
+  mesh: "sphereWireframe",
+  transform: new transform_default(-4, 0, -5),
   primitive: gl.LINES
 });
 createGrid2(scene, allocVec3(0, -0.6, -5), 10, true);
