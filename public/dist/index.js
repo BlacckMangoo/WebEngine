@@ -32,6 +32,109 @@ function normalize(out, a) {
   }
 }
 
+// math/mat4.ts
+function create2() {
+  return new Float32Array(16);
+}
+function allocMat4() {
+  const out = create2();
+  out[0] = 1;
+  out[1] = 0;
+  out[2] = 0;
+  out[3] = 0;
+  out[4] = 0;
+  out[5] = 1;
+  out[6] = 0;
+  out[7] = 0;
+  out[8] = 0;
+  out[9] = 0;
+  out[10] = 1;
+  out[11] = 0;
+  out[12] = 0;
+  out[13] = 0;
+  out[14] = 0;
+  out[15] = 1;
+  return out;
+}
+function lookAt(out, eye, center, up) {
+  const z = allocVec3(
+    eye[0] - center[0],
+    eye[1] - center[1],
+    eye[2] - center[2]
+  );
+  normalize(z, z);
+  const x = allocVec3();
+  cross(x, up, z);
+  normalize(x, x);
+  const y = allocVec3();
+  cross(y, z, x);
+  out[0] = x[0];
+  out[1] = y[0];
+  out[2] = z[0];
+  out[3] = 0;
+  out[4] = x[1];
+  out[5] = y[1];
+  out[6] = z[1];
+  out[7] = 0;
+  out[8] = x[2];
+  out[9] = y[2];
+  out[10] = z[2];
+  out[11] = 0;
+  out[12] = -(x[0] * eye[0] + x[1] * eye[1] + x[2] * eye[2]);
+  out[13] = -(y[0] * eye[0] + y[1] * eye[1] + y[2] * eye[2]);
+  out[14] = -(z[0] * eye[0] + z[1] * eye[1] + z[2] * eye[2]);
+  out[15] = 1;
+  return out;
+}
+function perspective(out, fovy, aspect, near, far) {
+  const f = 1 / Math.tan(fovy / 2);
+  const nf = 1 / (near - far);
+  out[0] = f / aspect;
+  out[1] = 0;
+  out[2] = 0;
+  out[3] = 0;
+  out[4] = 0;
+  out[5] = f;
+  out[6] = 0;
+  out[7] = 0;
+  out[8] = 0;
+  out[9] = 0;
+  out[10] = (far + near) * nf;
+  out[11] = -1;
+  out[12] = 0;
+  out[13] = 0;
+  out[14] = 2 * far * near * nf;
+  out[15] = 0;
+  return out;
+}
+function multiply(out, a, b) {
+  const a00 = a[0], a10 = a[1], a20 = a[2], a30 = a[3];
+  const a01 = a[4], a11 = a[5], a21 = a[6], a31 = a[7];
+  const a02 = a[8], a12 = a[9], a22 = a[10], a32 = a[11];
+  const a03 = a[12], a13 = a[13], a23 = a[14], a33 = a[15];
+  const b00 = b[0], b10 = b[1], b20 = b[2], b30 = b[3];
+  const b01 = b[4], b11 = b[5], b21 = b[6], b31 = b[7];
+  const b02 = b[8], b12 = b[9], b22 = b[10], b32 = b[11];
+  const b03 = b[12], b13 = b[13], b23 = b[14], b33 = b[15];
+  out[0] = a00 * b00 + a01 * b10 + a02 * b20 + a03 * b30;
+  out[1] = a10 * b00 + a11 * b10 + a12 * b20 + a13 * b30;
+  out[2] = a20 * b00 + a21 * b10 + a22 * b20 + a23 * b30;
+  out[3] = a30 * b00 + a31 * b10 + a32 * b20 + a33 * b30;
+  out[4] = a00 * b01 + a01 * b11 + a02 * b21 + a03 * b31;
+  out[5] = a10 * b01 + a11 * b11 + a12 * b21 + a13 * b31;
+  out[6] = a20 * b01 + a21 * b11 + a22 * b21 + a23 * b31;
+  out[7] = a30 * b01 + a31 * b11 + a32 * b21 + a33 * b31;
+  out[8] = a00 * b02 + a01 * b12 + a02 * b22 + a03 * b32;
+  out[9] = a10 * b02 + a11 * b12 + a12 * b22 + a13 * b32;
+  out[10] = a20 * b02 + a21 * b12 + a22 * b22 + a23 * b32;
+  out[11] = a30 * b02 + a31 * b12 + a32 * b22 + a33 * b32;
+  out[12] = a00 * b03 + a01 * b13 + a02 * b23 + a03 * b33;
+  out[13] = a10 * b03 + a11 * b13 + a12 * b23 + a13 * b33;
+  out[14] = a20 * b03 + a21 * b13 + a22 * b23 + a23 * b33;
+  out[15] = a30 * b03 + a31 * b13 + a32 * b23 + a33 * b33;
+  return out;
+}
+
 // math/quaternion.ts
 function allocQuaternion(x = 0, y = 0, z = 0, w = 1) {
   return {
@@ -185,6 +288,113 @@ function getRotationMatrix(out, q) {
   out[15] = 1;
 }
 
+// src/graphics/transform.ts
+var Transform = class {
+  position = allocVec3(0, 0, 0);
+  scale = allocVec3(1, 1, 1);
+  orientattion = allocQuaternion(0, 0, 0, 1);
+  model = allocMat4();
+  rotationmatrix = allocMat4();
+  tmat = allocMat4();
+  smat = allocMat4();
+  dirty = true;
+  constructor(xOrPos, y, z) {
+    if (typeof xOrPos === "number") {
+      setVec3(this.position, xOrPos, y ?? 0, z ?? 0);
+      return;
+    }
+    if (xOrPos) {
+      setVec3(this.position, xOrPos[0], xOrPos[1], xOrPos[2]);
+    }
+  }
+  setScale(scale) {
+    setVec3(this.scale, scale[0], scale[1], scale[2]);
+    this.dirty = true;
+  }
+  setPosition(pos) {
+    setVec3(this.position, pos[0], pos[1], pos[2]);
+    this.dirty = true;
+  }
+  setOrientation(orientation) {
+    setQuaternion(this.orientattion, orientation);
+    this.dirty = true;
+  }
+  updateCachedModelMatrix() {
+    this.tmat[0] = 1;
+    this.tmat[1] = 0;
+    this.tmat[2] = 0;
+    this.tmat[3] = 0;
+    this.tmat[4] = 0;
+    this.tmat[5] = 1;
+    this.tmat[6] = 0;
+    this.tmat[7] = 0;
+    this.tmat[8] = 0;
+    this.tmat[9] = 0;
+    this.tmat[10] = 1;
+    this.tmat[11] = 0;
+    this.tmat[12] = this.position[0];
+    this.tmat[13] = this.position[1];
+    this.tmat[14] = this.position[2];
+    this.tmat[15] = 1;
+    this.smat[0] = this.scale[0];
+    this.smat[1] = 0;
+    this.smat[2] = 0;
+    this.smat[3] = 0;
+    this.smat[4] = 0;
+    this.smat[5] = this.scale[1];
+    this.smat[6] = 0;
+    this.smat[7] = 0;
+    this.smat[8] = 0;
+    this.smat[9] = 0;
+    this.smat[10] = this.scale[2];
+    this.smat[11] = 0;
+    this.smat[12] = 0;
+    this.smat[13] = 0;
+    this.smat[14] = 0;
+    this.smat[15] = 1;
+    getRotationMatrix(this.rotationmatrix, this.orientattion);
+    this.model[0] = 1;
+    this.model[1] = 0;
+    this.model[2] = 0;
+    this.model[3] = 0;
+    this.model[4] = 0;
+    this.model[5] = 1;
+    this.model[6] = 0;
+    this.model[7] = 0;
+    this.model[8] = 0;
+    this.model[9] = 0;
+    this.model[10] = 1;
+    this.model[11] = 0;
+    this.model[12] = 0;
+    this.model[13] = 0;
+    this.model[14] = 0;
+    this.model[15] = 1;
+    multiply(this.model, this.model, this.tmat);
+    multiply(this.model, this.model, this.rotationmatrix);
+    multiply(this.model, this.model, this.smat);
+    this.dirty = false;
+  }
+  getModelMatrix() {
+    if (this.dirty) {
+      this.updateCachedModelMatrix();
+    }
+    return this.model;
+  }
+};
+var transform_default = Transform;
+
+// src/core/entity.ts
+var Entity = class {
+  renderable;
+  transform;
+  constructor(entityOptions) {
+    this.transform = new transform_default();
+    if (entityOptions.transform) {
+      this.transform = entityOptions.transform;
+    }
+  }
+};
+
 // src/graphics/context.ts
 var canvas = document.getElementById("canvas");
 canvas.width = window.innerWidth;
@@ -200,10 +410,12 @@ var gl = getGL(canvas);
 
 // src/graphics/shaderSrc.ts
 var SHADERS = {
-  fragment: "#version 300 es\r\n\r\nprecision mediump float;\r\nin vec3 v_world_normal;\r\nin vec3 v_world_pos;\r\nuniform vec3 u_light_dir;\r\nuniform vec3 u_base_color;\r\nuniform vec3 u_camera_pos;\r\nuniform samplerCube u_skybox;\r\nout vec4 fragColor;\r\n\r\nvoid main() {\r\n    vec3 n = normalize(v_world_normal);\r\n\r\n    vec3 l = normalize(u_light_dir);\r\n    float diff = max(dot(n, l), 0.0);\r\n    float ambient = 0.2;\r\n    vec3 diffuse = u_base_color * (ambient + diff);\r\n\r\n    vec3 viewDir = normalize(v_world_pos - u_camera_pos);\r\n    vec3 reflectedDir = reflect(viewDir, n);\r\n    vec3 reflectedColor = texture(u_skybox, reflectedDir).rgb;\r\n\r\n    float reflectionStrength = 0.35;\r\n    vec3 color = mix(diffuse, reflectedColor, reflectionStrength);\r\n\r\n    fragColor = vec4(color, 1.0);\r\n}",
+  fragment: "#version 300 es\r\n\r\nprecision mediump float;\r\nin vec3 v_world_normal;\r\nin vec3 v_world_pos;\r\n\r\nuniform vec3 u_light_dir;\r\nuniform vec3 u_camera_pos;\r\nuniform vec3 u_albedo;\r\nuniform float u_roughness;\r\nuniform float u_metallic;\r\nuniform float u_ao;\r\nuniform samplerCube u_skybox;\r\nout vec4 fragColor;\r\n\r\nconst float PI = 3.14159265359;\r\n\r\nfloat distributionGGX(vec3 N, vec3 H, float roughness) {\r\n    float a = roughness * roughness;\r\n    float a2 = a * a;\r\n    float NdotH = max(dot(N, H), 0.0);\r\n    float NdotH2 = NdotH * NdotH;\r\n\r\n    float denom = (NdotH2 * (a2 - 1.0) + 1.0);\r\n    return a2 / (PI * denom * denom + 0.0001);\r\n}\r\n\r\nfloat geometrySchlickGGX(float NdotV, float roughness) {\r\n    float r = roughness + 1.0;\r\n    float k = (r * r) / 8.0;\r\n    float denom = NdotV * (1.0 - k) + k;\r\n    return NdotV / (denom + 0.0001);\r\n}\r\n\r\nfloat geometrySmith(vec3 N, vec3 V, vec3 L, float roughness) {\r\n    float NdotV = max(dot(N, V), 0.0);\r\n    float NdotL = max(dot(N, L), 0.0);\r\n    float ggx2 = geometrySchlickGGX(NdotV, roughness);\r\n    float ggx1 = geometrySchlickGGX(NdotL, roughness);\r\n    return ggx1 * ggx2;\r\n}\r\n\r\nvec3 fresnelSchlick(float cosTheta, vec3 F0) {\r\n    return F0 + (1.0 - F0) * pow(1.0 - cosTheta, 5.0);\r\n}\r\n\r\nvec3 fresnelSchlickRoughness(float cosTheta, vec3 F0, float roughness) {\r\n    return F0 + (max(vec3(1.0 - roughness), F0) - F0) * pow(1.0 - cosTheta, 5.0);\r\n}\r\n\r\nvoid main() {\r\n    vec3 N = normalize(v_world_normal);\r\n    vec3 V = normalize(u_camera_pos - v_world_pos);\r\n    vec3 L = normalize(u_light_dir);\r\n    vec3 H = normalize(V + L);\r\n\r\n    vec3 albedo = u_albedo;\r\n    float roughness = clamp(u_roughness, 0.04, 1.0);\r\n    float metallic = clamp(u_metallic, 0.0, 1.0);\r\n    float ao = clamp(u_ao, 0.0, 1.0);\r\n\r\n    vec3 F0 = mix(vec3(0.04), albedo, metallic);\r\n    vec3 F = fresnelSchlick(max(dot(H, V), 0.0), F0);\r\n    float NDF = distributionGGX(N, H, roughness);\r\n    float G = geometrySmith(N, V, L, roughness);\r\n\r\n    vec3 numerator = NDF * G * F;\r\n    float denominator = 4.0 * max(dot(N, V), 0.0) * max(dot(N, L), 0.0) + 0.0001;\r\n    vec3 specular = numerator / denominator;\r\n\r\n    vec3 kS = F;\r\n    vec3 kD = (vec3(1.0) - kS) * (1.0 - metallic);\r\n    float NdotL = max(dot(N, L), 0.0);\r\n    vec3 radiance = vec3(2.6);\r\n    vec3 Lo = (kD * albedo / PI + specular) * radiance * NdotL;\r\n\r\n    vec3 reflectedDir = reflect(-V, N);\r\n    float maxEnvLod = 6.0;\r\n    vec3 envSpec = textureLod(u_skybox, reflectedDir, roughness * maxEnvLod).rgb;\r\n    vec3 F_ibl = fresnelSchlickRoughness(max(dot(N, V), 0.0), F0, roughness);\r\n    vec3 kS_ibl = F_ibl;\r\n    vec3 kD_ibl = (vec3(1.0) - kS_ibl) * (1.0 - metallic);\r\n\r\n    float specEnvStrength = mix(0.08, 1.0, metallic) * (1.0 - roughness * 0.85);\r\n    vec3 ambient = (0.03 * albedo * kD_ibl + envSpec * kS_ibl * specEnvStrength) * ao;\r\n\r\n    vec3 color = ambient + Lo;\r\n    color = color / (color + vec3(1.0));\r\n    color = pow(color, vec3(1.0 / 2.2));\r\n\r\n    fragColor = vec4(color, 1.0);\r\n}",
   skyboxFragment: "#version 300 es\r\n\r\nprecision mediump float;\r\nin vec3 v_dir;\r\nuniform samplerCube u_skybox;\r\nout vec4 fragColor;\r\n\r\nvoid main() {\r\n    fragColor = texture(u_skybox, normalize(v_dir));\r\n}\r\n",
   skyboxVertex: "#version 300 es\r\n\r\nlayout(location = 0) in vec3 a_pos;\r\nuniform mat4 u_model;\r\nuniform mat4 u_view;\r\nuniform mat4 u_projection;\r\nout vec3 v_dir;\r\n\r\nvoid main() {\r\n    vec4 clipPos = u_projection * u_view * u_model * vec4(a_pos, 1.0);\r\n    gl_Position = clipPos.xyww;\r\n    v_dir = a_pos;\r\n}\r\n",
-  vertex: "#version 300 es\r\n\r\nlayout(location = 0) in vec3 a_pos;\r\nlayout(location = 1) in vec3 a_normal;\r\n\r\n//MVP matrices\r\nuniform mat4 u_model;\r\nuniform mat4 u_view;\r\nuniform mat4 u_projection;\r\n\r\nout vec3 v_world_normal;\r\nout vec3 v_world_pos;\r\n\r\nvoid main() {\r\n    vec4 worldPos = u_model * vec4(a_pos, 1.0);\r\n    mat3 normalMatrix = mat3(transpose(inverse(u_model)));\r\n    v_world_normal = normalize(normalMatrix * a_normal);\r\n    v_world_pos = worldPos.xyz;\r\n    gl_Position = u_projection * u_view * worldPos;\r\n}"
+  unlitFragment: "#version 300 es\r\n\r\nprecision mediump float;\r\n\r\nuniform vec3 u_color;\r\nuniform float u_alpha;\r\nout vec4 fragColor;\r\n\r\nvoid main() {\r\n    fragColor = vec4(u_color, u_alpha);\r\n}\r\n",
+  unlitVertex: "#version 300 es\r\n\r\nlayout(location = 0) in vec3 a_pos;\r\n\r\nuniform mat4 u_model;\r\nuniform mat4 u_view;\r\nuniform mat4 u_projection;\r\n\r\nvoid main() {\r\n    gl_Position = u_projection * u_view * u_model * vec4(a_pos, 1.0);\r\n}\r\n",
+  vertex: "#version 300 es\r\n\r\nlayout(location = 0) in vec3 a_pos;\r\nlayout(location = 1) in vec3 a_normal;\r\nlayout(location = 2) in vec2 a_texcoord;\r\n\r\nout vec2 v_texcoord ;\r\n\r\n//MVP matrices\r\nuniform mat4 u_model;\r\nuniform mat4 u_view;\r\nuniform mat4 u_projection;\r\n\r\nout vec3 v_world_normal;\r\nout vec3 v_world_pos;\r\n\r\nvoid main() {\r\n    vec4 worldPos = u_model * vec4(a_pos, 1.0);\r\n    mat3 normalMatrix = mat3(transpose(inverse(u_model)));\r\n    v_world_normal = normalize(normalMatrix * a_normal);\r\n    v_world_pos = worldPos.xyz;\r\n    v_texcoord = a_texcoord;\r\n    gl_Position = u_projection * u_view * worldPos;\r\n}"
 };
 
 // src/graphics/shader.ts
@@ -455,6 +667,62 @@ var CUBE = {
     0,
     0
   ],
+  uvs: [
+    // Front
+    0,
+    0,
+    1,
+    0,
+    1,
+    1,
+    0,
+    1,
+    // Back
+    0,
+    0,
+    1,
+    0,
+    1,
+    1,
+    0,
+    1,
+    // Top
+    0,
+    0,
+    1,
+    0,
+    1,
+    1,
+    0,
+    1,
+    // Bottom
+    0,
+    0,
+    1,
+    0,
+    1,
+    1,
+    0,
+    1,
+    // Right
+    0,
+    0,
+    1,
+    0,
+    1,
+    1,
+    0,
+    1,
+    // Left
+    0,
+    0,
+    1,
+    0,
+    1,
+    1,
+    0,
+    1
+  ],
   indices: [
     0,
     1,
@@ -500,14 +768,298 @@ var CUBE = {
     // Left
   ]
 };
+var CUBE_WIREFRAME = {
+  vertices: [
+    // z = 0.5
+    -0.5,
+    -0.5,
+    0.5,
+    // 0
+    0.5,
+    -0.5,
+    0.5,
+    // 1
+    0.5,
+    0.5,
+    0.5,
+    // 2
+    -0.5,
+    0.5,
+    0.5,
+    // 3
+    // z = -0.5
+    -0.5,
+    -0.5,
+    -0.5,
+    // 4
+    0.5,
+    -0.5,
+    -0.5,
+    // 5
+    0.5,
+    0.5,
+    -0.5,
+    // 6
+    -0.5,
+    0.5,
+    -0.5
+    // 7
+  ],
+  normals: [
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0
+  ],
+  uvs: [
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0
+  ],
+  indices: [
+    // Front square
+    0,
+    1,
+    1,
+    2,
+    2,
+    3,
+    3,
+    0,
+    // Back square
+    4,
+    5,
+    5,
+    6,
+    6,
+    7,
+    7,
+    4,
+    // Connectors
+    0,
+    4,
+    1,
+    5,
+    2,
+    6,
+    3,
+    7
+  ]
+};
+function createGrid(width, height, cells) {
+  const safeWidth = Math.max(1e-3, width);
+  const safeHeight = Math.max(1e-3, height);
+  const safeCells = Math.max(1, Math.floor(cells));
+  const halfW = safeWidth * 0.5;
+  const halfH = safeHeight * 0.5;
+  const stepX = safeWidth / safeCells;
+  const stepZ = safeHeight / safeCells;
+  const vertices = [];
+  const indices = [];
+  const pushSegment = (ax, ay, az, bx, by, bz) => {
+    const start = vertices.length / 3;
+    vertices.push(ax, ay, az, bx, by, bz);
+    indices.push(start, start + 1);
+  };
+  for (let i = 0; i <= safeCells; i++) {
+    const x = -halfW + i * stepX;
+    pushSegment(x, 0, -halfH, x, 0, halfH);
+  }
+  for (let i = 0; i <= safeCells; i++) {
+    const z = -halfH + i * stepZ;
+    pushSegment(-halfW, 0, z, halfW, 0, z);
+  }
+  const normals = new Array(vertices.length).fill(0);
+  const uvs = new Array(vertices.length / 3 * 2).fill(0);
+  return {
+    vertices,
+    normals,
+    uvs,
+    indices
+  };
+}
+function createGridPrimitive(width, height, cells, includeAxes) {
+  const safeWidth = Math.max(1e-3, width);
+  const safeHeight = Math.max(1e-3, height);
+  const axisWidth = 0.024;
+  const axisDivisions = 24;
+  const axisLength = Math.max(safeWidth, safeHeight);
+  const axisRadius = Math.max(1e-3, axisWidth);
+  return {
+    grid: createGrid(safeWidth, safeHeight, cells),
+    includeAxes,
+    axisRadius,
+    axisLength,
+    axisCylinder: includeAxes ? createCylinder(axisLength, axisDivisions, axisRadius) : void 0,
+    axisDefinitions: includeAxes ? [
+      {
+        color: { r: 0.2, g: 0.95, b: 0.35 },
+        rotationAxis: [0, 1, 0],
+        angle: 0
+      },
+      {
+        color: { r: 0.95, g: 0.2, b: 0.2 },
+        rotationAxis: [0, 0, 1],
+        angle: -Math.PI * 0.5
+      },
+      {
+        color: { r: 0.2, g: 0.5, b: 0.95 },
+        rotationAxis: [1, 0, 0],
+        angle: Math.PI * 0.5
+      }
+    ] : []
+  };
+}
+var GRID_CONFIG = createGridPrimitive(
+  10,
+  10,
+  20,
+  true
+);
+var GRID = GRID_CONFIG.grid;
+function createCylinder(height, divisions, radius = 0.5) {
+  const safeHeight = Math.max(1e-3, height);
+  const safeRadius = Math.max(1e-3, radius);
+  const safeDivisions = Math.max(3, Math.floor(divisions));
+  const halfH = safeHeight * 0.5;
+  const tau = Math.PI * 2;
+  const vertices = [];
+  const normals = [];
+  const uvs = [];
+  const indices = [];
+  const pushVertex = (x, y, z, nx, ny, nz, u, v) => {
+    const index = vertices.length / 3;
+    vertices.push(x, y, z);
+    normals.push(nx, ny, nz);
+    uvs.push(u, v);
+    return index;
+  };
+  const pushTriangle = (a, b, c) => {
+    indices.push(a, b, c);
+  };
+  for (let i = 0; i < safeDivisions; i++) {
+    const t0 = i / safeDivisions;
+    const t1 = (i + 1) / safeDivisions;
+    const a0 = tau * t0;
+    const a1 = tau * t1;
+    const x0 = Math.cos(a0) * safeRadius;
+    const z0 = Math.sin(a0) * safeRadius;
+    const x1 = Math.cos(a1) * safeRadius;
+    const z1 = Math.sin(a1) * safeRadius;
+    const i0 = pushVertex(x0, -halfH, z0, Math.cos(a0), 0, Math.sin(a0), t0, 0);
+    const i1 = pushVertex(x0, halfH, z0, Math.cos(a0), 0, Math.sin(a0), t0, 1);
+    const i2 = pushVertex(x1, -halfH, z1, Math.cos(a1), 0, Math.sin(a1), t1, 0);
+    const i3 = pushVertex(x1, halfH, z1, Math.cos(a1), 0, Math.sin(a1), t1, 1);
+    pushTriangle(i0, i1, i2);
+    pushTriangle(i2, i1, i3);
+  }
+  for (let i = 0; i < safeDivisions; i++) {
+    const t0 = i / safeDivisions;
+    const t1 = (i + 1) / safeDivisions;
+    const a0 = tau * t0;
+    const a1 = tau * t1;
+    const c = pushVertex(0, halfH, 0, 0, 1, 0, 0.5, 0.5);
+    const r0 = pushVertex(
+      Math.cos(a0) * safeRadius,
+      halfH,
+      Math.sin(a0) * safeRadius,
+      0,
+      1,
+      0,
+      0.5 + 0.5 * Math.cos(a0),
+      0.5 + 0.5 * Math.sin(a0)
+    );
+    const r1 = pushVertex(
+      Math.cos(a1) * safeRadius,
+      halfH,
+      Math.sin(a1) * safeRadius,
+      0,
+      1,
+      0,
+      0.5 + 0.5 * Math.cos(a1),
+      0.5 + 0.5 * Math.sin(a1)
+    );
+    pushTriangle(c, r0, r1);
+  }
+  for (let i = 0; i < safeDivisions; i++) {
+    const t0 = i / safeDivisions;
+    const t1 = (i + 1) / safeDivisions;
+    const a0 = tau * t0;
+    const a1 = tau * t1;
+    const c = pushVertex(0, -halfH, 0, 0, -1, 0, 0.5, 0.5);
+    const r0 = pushVertex(
+      Math.cos(a0) * safeRadius,
+      -halfH,
+      Math.sin(a0) * safeRadius,
+      0,
+      -1,
+      0,
+      0.5 + 0.5 * Math.cos(a0),
+      0.5 + 0.5 * Math.sin(a0)
+    );
+    const r1 = pushVertex(
+      Math.cos(a1) * safeRadius,
+      -halfH,
+      Math.sin(a1) * safeRadius,
+      0,
+      -1,
+      0,
+      0.5 + 0.5 * Math.cos(a1),
+      0.5 + 0.5 * Math.sin(a1)
+    );
+    pushTriangle(c, r1, r0);
+  }
+  return {
+    vertices,
+    normals,
+    uvs,
+    indices
+  };
+}
+var CYLINDER = createCylinder(1, 24);
 var QUAD = {
   vertices: [-1, -1, 0, 1, -1, 0, 1, 1, 0, -1, 1, 0],
   normals: [0, 0, 1, 0, 0, 1, 0, 0, 1, 0, 0, 1],
+  uvs: [0, 0, 1, 0, 1, 1, 0, 1],
   indices: [0, 1, 2, 0, 2, 3]
 };
 var TRIANGLE = {
   vertices: [0, 0.5, 0, -0.5, -0.5, 0, 0.5, -0.5, 0],
   normals: [0, 0, 1, 0, 0, 1, 0, 0, 1],
+  uvs: [0.5, 1, 0, 0, 1, 0],
   indices: [0, 1, 2]
 };
 var PYRAMID = {
@@ -633,95 +1185,54 @@ var PYRAMID = {
     0.7071,
     0
   ],
+  uvs: [
+    // Base tri 1
+    0,
+    0,
+    1,
+    1,
+    1,
+    0,
+    // Base tri 2
+    0,
+    0,
+    0,
+    1,
+    1,
+    1,
+    // Front
+    0,
+    0,
+    1,
+    0,
+    0.5,
+    1,
+    // Right
+    0,
+    0,
+    1,
+    0,
+    0.5,
+    1,
+    // Back
+    0,
+    0,
+    1,
+    0,
+    0.5,
+    1,
+    // Left
+    0,
+    0,
+    1,
+    0,
+    0.5,
+    1
+  ],
   indices: [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17]
 };
-function createSphere(radius = 0.5, subdivisions = 3) {
-  const t = (1 + Math.sqrt(5)) / 2;
-  const baseVertices = [
-    [-1, t, 0],
-    [1, t, 0],
-    [-1, -t, 0],
-    [1, -t, 0],
-    [0, -1, t],
-    [0, 1, t],
-    [0, -1, -t],
-    [0, 1, -t],
-    [t, 0, -1],
-    [t, 0, 1],
-    [-t, 0, -1],
-    [-t, 0, 1]
-  ];
-  for (const v of baseVertices) {
-    const len = Math.sqrt(v[0] * v[0] + v[1] * v[1] + v[2] * v[2]);
-    v[0] /= len;
-    v[1] /= len;
-    v[2] /= len;
-  }
-  let faces = [
-    [0, 11, 5],
-    [0, 5, 1],
-    [0, 1, 7],
-    [0, 7, 10],
-    [0, 10, 11],
-    [1, 5, 9],
-    [5, 11, 4],
-    [11, 10, 2],
-    [10, 7, 6],
-    [7, 1, 8],
-    [3, 9, 4],
-    [3, 4, 2],
-    [3, 2, 6],
-    [3, 6, 8],
-    [3, 8, 9],
-    [4, 9, 5],
-    [2, 4, 11],
-    [6, 2, 10],
-    [8, 6, 7],
-    [9, 8, 1]
-  ];
-  const verts = [...baseVertices];
-  const midpointCache = /* @__PURE__ */ new Map();
-  function getMidpoint(a, b) {
-    const key = a < b ? `${a}_${b}` : `${b}_${a}`;
-    const cached = midpointCache.get(key);
-    if (cached !== void 0) return cached;
-    const ax = verts[a][0], ay = verts[a][1], az = verts[a][2];
-    const bx = verts[b][0], by = verts[b][1], bz = verts[b][2];
-    let mx = (ax + bx) / 2, my = (ay + by) / 2, mz = (az + bz) / 2;
-    const len = Math.sqrt(mx * mx + my * my + mz * mz);
-    mx /= len;
-    my /= len;
-    mz /= len;
-    const idx = verts.length;
-    verts.push([mx, my, mz]);
-    midpointCache.set(key, idx);
-    return idx;
-  }
-  for (let i = 0; i < subdivisions; i++) {
-    const newFaces = [];
-    for (const [a, b, c] of faces) {
-      const ab = getMidpoint(a, b);
-      const bc = getMidpoint(b, c);
-      const ca = getMidpoint(c, a);
-      newFaces.push([a, ab, ca], [b, bc, ab], [c, ca, bc], [ab, bc, ca]);
-    }
-    faces = newFaces;
-    midpointCache.clear();
-  }
-  const vertices = [];
-  const normals = [];
-  const indices = [];
-  for (const v of verts) {
-    vertices.push(v[0] * radius, v[1] * radius, v[2] * radius);
-    normals.push(v[0], v[1], v[2]);
-  }
-  for (const [a, b, c] of faces) {
-    indices.push(a, b, c);
-  }
-  return { vertices, normals, indices };
-}
 
-// src/assetManager.ts
+// src/core/assetManager.ts
 var AssetManager = class _AssetManager {
   static instance;
   shaders = /* @__PURE__ */ new Map();
@@ -764,8 +1275,10 @@ var AssetManager = class _AssetManager {
   }
   getDefaultMaterial() {
     return {
-      shader: this.getShader("default"),
-      color: { r: 0.8, g: 0.7, b: 0.2 }
+      color: { r: 0.9, g: 0.42, b: 0.22 },
+      roughness: 0.33,
+      metallic: 0.18,
+      ao: 1
     };
   }
 };
@@ -773,170 +1286,18 @@ var Assets = AssetManager.getInstance();
 Assets.registerModel("horse", horse_default);
 Assets.registerModel("bunny", stanfordbunny_default);
 Assets.registerModel("cube", CUBE);
+Assets.registerModel("cubeWireframe", CUBE_WIREFRAME);
+Assets.registerModel("cylinder", CYLINDER);
+Assets.registerModel("grid", GRID);
+if (GRID_CONFIG.includeAxes && GRID_CONFIG.axisCylinder) {
+  Assets.registerModel("gridAxisCylinder", GRID_CONFIG.axisCylinder);
+}
 Assets.registerModel("plane", QUAD);
 Assets.registerModel("triangle", TRIANGLE);
 Assets.registerModel("pyramid", PYRAMID);
-Assets.registerModel("sphere", createSphere(0.5, 3));
 Assets.registerShader("default", new Shader(SHADERS.vertex, SHADERS.fragment));
-
-// math/mat4.ts
-function create2() {
-  return new Float32Array(16);
-}
-function allocMat4() {
-  const out = create2();
-  out[0] = 1;
-  out[1] = 0;
-  out[2] = 0;
-  out[3] = 0;
-  out[4] = 0;
-  out[5] = 1;
-  out[6] = 0;
-  out[7] = 0;
-  out[8] = 0;
-  out[9] = 0;
-  out[10] = 1;
-  out[11] = 0;
-  out[12] = 0;
-  out[13] = 0;
-  out[14] = 0;
-  out[15] = 1;
-  return out;
-}
-function lookAt(out, eye, center, up) {
-  const z = allocVec3(
-    eye[0] - center[0],
-    eye[1] - center[1],
-    eye[2] - center[2]
-  );
-  normalize(z, z);
-  const x = allocVec3();
-  cross(x, up, z);
-  normalize(x, x);
-  const y = allocVec3();
-  cross(y, z, x);
-  out[0] = x[0];
-  out[1] = y[0];
-  out[2] = z[0];
-  out[3] = 0;
-  out[4] = x[1];
-  out[5] = y[1];
-  out[6] = z[1];
-  out[7] = 0;
-  out[8] = x[2];
-  out[9] = y[2];
-  out[10] = z[2];
-  out[11] = 0;
-  out[12] = -(x[0] * eye[0] + x[1] * eye[1] + x[2] * eye[2]);
-  out[13] = -(y[0] * eye[0] + y[1] * eye[1] + y[2] * eye[2]);
-  out[14] = -(z[0] * eye[0] + z[1] * eye[1] + z[2] * eye[2]);
-  out[15] = 1;
-  return out;
-}
-function perspective(out, fovy, aspect, near, far) {
-  const f = 1 / Math.tan(fovy / 2);
-  const nf = 1 / (near - far);
-  out[0] = f / aspect;
-  out[1] = 0;
-  out[2] = 0;
-  out[3] = 0;
-  out[4] = 0;
-  out[5] = f;
-  out[6] = 0;
-  out[7] = 0;
-  out[8] = 0;
-  out[9] = 0;
-  out[10] = (far + near) * nf;
-  out[11] = -1;
-  out[12] = 0;
-  out[13] = 0;
-  out[14] = 2 * far * near * nf;
-  out[15] = 0;
-  return out;
-}
-function multiply(out, a, b) {
-  const a00 = a[0], a10 = a[1], a20 = a[2], a30 = a[3];
-  const a01 = a[4], a11 = a[5], a21 = a[6], a31 = a[7];
-  const a02 = a[8], a12 = a[9], a22 = a[10], a32 = a[11];
-  const a03 = a[12], a13 = a[13], a23 = a[14], a33 = a[15];
-  const b00 = b[0], b10 = b[1], b20 = b[2], b30 = b[3];
-  const b01 = b[4], b11 = b[5], b21 = b[6], b31 = b[7];
-  const b02 = b[8], b12 = b[9], b22 = b[10], b32 = b[11];
-  const b03 = b[12], b13 = b[13], b23 = b[14], b33 = b[15];
-  out[0] = a00 * b00 + a01 * b10 + a02 * b20 + a03 * b30;
-  out[1] = a10 * b00 + a11 * b10 + a12 * b20 + a13 * b30;
-  out[2] = a20 * b00 + a21 * b10 + a22 * b20 + a23 * b30;
-  out[3] = a30 * b00 + a31 * b10 + a32 * b20 + a33 * b30;
-  out[4] = a00 * b01 + a01 * b11 + a02 * b21 + a03 * b31;
-  out[5] = a10 * b01 + a11 * b11 + a12 * b21 + a13 * b31;
-  out[6] = a20 * b01 + a21 * b11 + a22 * b21 + a23 * b31;
-  out[7] = a30 * b01 + a31 * b11 + a32 * b21 + a33 * b31;
-  out[8] = a00 * b02 + a01 * b12 + a02 * b22 + a03 * b32;
-  out[9] = a10 * b02 + a11 * b12 + a12 * b22 + a13 * b32;
-  out[10] = a20 * b02 + a21 * b12 + a22 * b22 + a23 * b32;
-  out[11] = a30 * b02 + a31 * b12 + a32 * b22 + a33 * b32;
-  out[12] = a00 * b03 + a01 * b13 + a02 * b23 + a03 * b33;
-  out[13] = a10 * b03 + a11 * b13 + a12 * b23 + a13 * b33;
-  out[14] = a20 * b03 + a21 * b13 + a22 * b23 + a23 * b33;
-  out[15] = a30 * b03 + a31 * b13 + a32 * b23 + a33 * b33;
-  return out;
-}
-
-// math/utils.ts
-function GetTransformMatrix(position) {
-  const Tmatrix = allocMat4();
-  Tmatrix[12] = position[0];
-  Tmatrix[13] = position[1];
-  Tmatrix[14] = position[2];
-  return Tmatrix;
-}
-function GetScaleMatrix(scale) {
-  const Smatrix = allocMat4();
-  Smatrix[0] = scale[0];
-  Smatrix[5] = scale[1];
-  Smatrix[10] = scale[2];
-  return Smatrix;
-}
-
-// src/graphics/transform.ts
-var Transform = class {
-  position = allocVec3(0, 0, 0);
-  scale = allocVec3(1, 1, 1);
-  orientattion = allocQuaternion(0, 0, 0, 1);
-  setScale(scale) {
-    setVec3(this.scale, scale[0], scale[1], scale[2]);
-  }
-  setPosition(pos) {
-    setVec3(this.position, pos[0], pos[1], pos[2]);
-  }
-  setOrientation(orientation) {
-    setQuaternion(this.orientattion, orientation);
-  }
-  getModelMatrix() {
-    const model = allocMat4();
-    const rotationmatrix = allocMat4();
-    const tmat = GetTransformMatrix(this.position);
-    const smat = GetScaleMatrix(this.scale);
-    getRotationMatrix(rotationmatrix, this.orientattion);
-    multiply(model, model, tmat);
-    multiply(model, model, rotationmatrix);
-    multiply(model, model, smat);
-    return model;
-  }
-};
-var transform_default = Transform;
-
-// src/core/entity.ts
-var Entity = class {
-  renderable;
-  transform;
-  constructor(entityOptions) {
-    this.transform = new transform_default();
-    if (entityOptions.transform) {
-      this.transform = entityOptions.transform;
-    }
-  }
-};
+Assets.registerShader("unlit", new Shader(SHADERS.unlitVertex, SHADERS.unlitFragment));
+Assets.registerShader("skybox", new Shader(SHADERS.skyboxVertex, SHADERS.skyboxFragment));
 
 // src/graphics/mesh.ts
 var VertexLayout = class {
@@ -947,10 +1308,19 @@ var VertexLayout = class {
     this.attributes = attributes;
   }
 };
-var pos3norm3 = new VertexLayout(24, [
+var pos3norm3uv2 = new VertexLayout(32, [
   { location: 0, size: 3, type: gl.FLOAT, normalized: false, offset: 0 },
-  { location: 1, size: 3, type: gl.FLOAT, normalized: false, offset: 12 }
+  { location: 1, size: 3, type: gl.FLOAT, normalized: false, offset: 12 },
+  { location: 2, size: 2, type: gl.FLOAT, normalized: false, offset: 24 }
 ]);
+function createFallbackUVs(vertices, vertexCount) {
+  const uvs = new Array(vertexCount * 2);
+  for (let i = 0; i < vertexCount; i++) {
+    uvs[i * 2] = vertices[i * 3] * 0.5 + 0.5;
+    uvs[i * 2 + 1] = vertices[i * 3 + 2] * 0.5 + 0.5;
+  }
+  return uvs;
+}
 var Mesh = class {
   vertexData = new Float32Array();
   indices = new Uint32Array();
@@ -961,21 +1331,27 @@ var Mesh = class {
   primitive;
   constructor(data, gl2, primitive = gl2.TRIANGLES) {
     this.indices = new Uint32Array(data.indices);
-    this.layout = pos3norm3;
+    this.layout = pos3norm3uv2;
     this.vertexCount = data.vertices.length / 3;
     const normals = data.normals ?? new Array(this.vertexCount * 3).fill(0);
+    const uvs = data.uvs ?? createFallbackUVs(data.vertices, this.vertexCount);
     if (normals.length !== this.vertexCount * 3) {
       throw new Error("Invalid normals length for mesh");
     }
+    if (uvs.length !== this.vertexCount * 2) {
+      throw new Error("Invalid uvs length for mesh");
+    }
     this.primitive = primitive;
-    this.vertexData = new Float32Array(this.vertexCount * 6);
+    this.vertexData = new Float32Array(this.vertexCount * 8);
     for (let i = 0; i < this.vertexCount; i++) {
-      this.vertexData[i * 6] = data.vertices[i * 3];
-      this.vertexData[i * 6 + 1] = data.vertices[i * 3 + 1];
-      this.vertexData[i * 6 + 2] = data.vertices[i * 3 + 2];
-      this.vertexData[i * 6 + 3] = normals[i * 3];
-      this.vertexData[i * 6 + 4] = normals[i * 3 + 1];
-      this.vertexData[i * 6 + 5] = normals[i * 3 + 2];
+      this.vertexData[i * 8] = data.vertices[i * 3];
+      this.vertexData[i * 8 + 1] = data.vertices[i * 3 + 1];
+      this.vertexData[i * 8 + 2] = data.vertices[i * 3 + 2];
+      this.vertexData[i * 8 + 3] = normals[i * 3];
+      this.vertexData[i * 8 + 4] = normals[i * 3 + 1];
+      this.vertexData[i * 8 + 5] = normals[i * 3 + 2];
+      this.vertexData[i * 8 + 6] = uvs[i * 2];
+      this.vertexData[i * 8 + 7] = uvs[i * 2 + 1];
     }
     this.vbo = gl2.createBuffer();
     this.ibo = gl2.createBuffer();
@@ -1015,17 +1391,39 @@ function colorToArray(color, arr) {
 }
 
 // src/graphics/renderable.ts
+var tmpColor = new Float32Array(3);
+function bindLitMaterial(shader, material) {
+  colorToArray(material.color, tmpColor);
+  shader.setVec3("u_albedo", tmpColor);
+  shader.setFloat("u_roughness", material.roughness ?? 0.5);
+  shader.setFloat("u_metallic", material.metallic ?? 0);
+  shader.setFloat("u_ao", material.ao ?? 1);
+}
+function bindUnlitMaterial(shader, material) {
+  colorToArray(material.color, tmpColor);
+  shader.setVec3("u_color", tmpColor);
+  shader.setFloat("u_alpha", material.alpha ?? 1);
+}
 var Renderable = class {
   mesh;
   mat;
-  baseColor = new Float32Array(3);
   constructor(mesh, mat) {
     this.mesh = mesh;
     this.mat = mat;
   }
-  draw() {
-    colorToArray(this.mat.color, this.baseColor);
-    this.mat.shader.setVec3("u_base_color", this.baseColor);
+  draw(shader, model, view, projection, lightDir, cameraPos, skyboxUnit = 0, unlit = false) {
+    shader.use();
+    shader.setMat4("u_model", model);
+    shader.setMat4("u_view", view);
+    shader.setMat4("u_projection", projection);
+    if (unlit) {
+      bindUnlitMaterial(shader, this.mat);
+    } else {
+      shader.setVec3("u_light_dir", lightDir);
+      shader.setVec3("u_camera_pos", cameraPos);
+      shader.setInt("u_skybox", skyboxUnit);
+      bindLitMaterial(shader, this.mat);
+    }
     this.mesh.bind(gl);
     this.mesh.draw(gl);
   }
@@ -1125,12 +1523,64 @@ var CUBEMAPS = {
 };
 
 // src/graphics/image.ts
-async function loadImage(url) {
-  const img = new Image();
-  img.src = url;
-  await img.decode();
-  return img;
+function loadImage(url) {
+  return new Promise((resolve, reject) => {
+    const img = new Image();
+    let settled = false;
+    const finish = (cb) => {
+      if (settled) return;
+      settled = true;
+      cb();
+    };
+    img.onload = () => finish(() => resolve(img));
+    img.onerror = () => finish(() => reject(new Error(`Failed to load image: ${url}`)));
+    img.src = url;
+    if (typeof img.decode === "function") {
+      void img.decode().then(
+        () => finish(() => resolve(img)),
+        () => {
+        }
+      );
+    }
+  });
 }
+
+// src/graphics/texture.ts
+var Texture = class {
+  texture;
+  target;
+  constructor(imageOrTarget = gl.TEXTURE_2D) {
+    const texture = gl.createTexture();
+    if (!texture) {
+      throw new Error("Failed to create texture");
+    }
+    this.texture = texture;
+    if (typeof imageOrTarget === "number") {
+      this.target = imageOrTarget;
+      return;
+    }
+    this.target = gl.TEXTURE_2D;
+    this.bind(0);
+    gl.texImage2D(
+      gl.TEXTURE_2D,
+      0,
+      gl.RGBA,
+      gl.RGBA,
+      gl.UNSIGNED_BYTE,
+      imageOrTarget
+    );
+    gl.generateMipmap(gl.TEXTURE_2D);
+    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.REPEAT);
+    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.REPEAT);
+    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR_MIPMAP_LINEAR);
+    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.LINEAR);
+  }
+  bind(unit = 0) {
+    gl.activeTexture(gl.TEXTURE0 + unit);
+    gl.bindTexture(this.target, this.texture);
+  }
+};
+var texture_default = Texture;
 
 // src/graphics/cubemap.ts
 var FACE_ORDER = ["px", "py", "pz", "nx", "ny", "nz"];
@@ -1150,39 +1600,11 @@ var Cubemap = class {
   constructor(name) {
     this.name = name;
     this.entry = CUBEMAPS[name];
-    const texture = gl.createTexture();
-    if (!texture) {
-      throw new Error("Failed to create cubemap texture");
-    }
-    this.texture = texture;
-    this.initPlaceholderFaces();
+    this.texture = new texture_default(gl.TEXTURE_CUBE_MAP);
     void this.loadFaces();
   }
   bind(unit = 0) {
-    gl.activeTexture(gl.TEXTURE0 + unit);
-    gl.bindTexture(gl.TEXTURE_CUBE_MAP, this.texture);
-  }
-  initPlaceholderFaces() {
-    this.bind(0);
-    const placeholder = new Uint8Array([80, 80, 80, 255]);
-    for (const face of FACE_ORDER) {
-      gl.texImage2D(
-        FACE_TARGETS[face],
-        0,
-        gl.RGBA,
-        1,
-        1,
-        0,
-        gl.RGBA,
-        gl.UNSIGNED_BYTE,
-        placeholder
-      );
-    }
-    gl.texParameteri(gl.TEXTURE_CUBE_MAP, gl.TEXTURE_MIN_FILTER, gl.LINEAR);
-    gl.texParameteri(gl.TEXTURE_CUBE_MAP, gl.TEXTURE_MAG_FILTER, gl.LINEAR);
-    gl.texParameteri(gl.TEXTURE_CUBE_MAP, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE);
-    gl.texParameteri(gl.TEXTURE_CUBE_MAP, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
-    gl.texParameteri(gl.TEXTURE_CUBE_MAP, gl.TEXTURE_WRAP_R, gl.CLAMP_TO_EDGE);
+    this.texture.bind(unit);
   }
   async loadFaces() {
     try {
@@ -1203,9 +1625,9 @@ var Cubemap = class {
           loaded.image
         );
       }
-      gl.generateMipmap(gl.TEXTURE_CUBE_MAP);
+      gl.generateMipmap(this.texture.target);
       gl.texParameteri(
-        gl.TEXTURE_CUBE_MAP,
+        this.texture.target,
         gl.TEXTURE_MIN_FILTER,
         gl.LINEAR_MIPMAP_LINEAR
       );
@@ -1219,6 +1641,15 @@ function createCubemap(name = "skybox") {
   return new Cubemap(name);
 }
 
+// math/utils.ts
+function GetTransformMatrix(position) {
+  const Tmatrix = allocMat4();
+  Tmatrix[12] = position[0];
+  Tmatrix[13] = position[1];
+  Tmatrix[14] = position[2];
+  return Tmatrix;
+}
+
 // src/graphics/skybox.ts
 var Skybox = class {
   mesh;
@@ -1228,7 +1659,7 @@ var Skybox = class {
   constructor(cubemapName) {
     const model = Assets.getModel("cube");
     this.mesh = new Mesh(model, gl);
-    this.shader = new Shader(SHADERS.skyboxVertex, SHADERS.skyboxFragment);
+    this.shader = Assets.getShader("skybox");
     this.cubemap = createCubemap(cubemapName);
     this.model = GetTransformMatrix(allocVec3(0, 0, 0));
   }
@@ -1247,9 +1678,12 @@ var Skybox = class {
 var skybox_default = Skybox;
 
 // src/graphics/camera.ts
+var WORLD_UP = allocVec3(0, 1, 0);
+var LOCAL_FORWARD = allocVec3(0, 0, -1);
+var LOCAL_RIGHT = allocVec3(1, 0, 0);
 var Camera = class {
-  transform = new transform_default();
-  skybox = new skybox_default("skybox");
+  transform = new transform_default(0, 0, 0);
+  skybox;
   fov = 45;
   aspect = canvas.width / canvas.height;
   near = 0.1;
@@ -1261,15 +1695,13 @@ var Camera = class {
   up = allocVec3(0, 0, 0);
   forward = allocVec3(0, 0, -1);
   right = allocVec3(1, 0, 0);
-  worldUp = allocVec3(0, 1, 0);
   rotationTarget = allocQuaternion();
   center = allocVec3(0, 0, 0);
-  constructor() {
-    this.transform.position[0] = 0;
-    this.transform.position[1] = 0;
-    this.transform.position[2] = 0;
-    this.transform.orientattion = allocQuaternion(0, 0, 0, 1);
-    this.moveSpeed = 2;
+  constructor(skyboxName) {
+    if (skyboxName) {
+      this.skybox = new skybox_default(skyboxName);
+    }
+    this.moveSpeed = 6;
     this.rotateSpeed = 8e-3;
     this.maxPitch = Math.PI / 2 - 1e-3;
     this.currentPitch = 0;
@@ -1285,8 +1717,8 @@ var Camera = class {
     return this.projection;
   }
   getViewMatrix() {
-    rotateVec3ByQuaternion(this.up, allocVec3(0, 1, 0), this.transform.orientattion);
-    rotateVec3ByQuaternion(this.forward, allocVec3(0, 0, -1), this.transform.orientattion);
+    rotateVec3ByQuaternion(this.up, WORLD_UP, this.transform.orientattion);
+    rotateVec3ByQuaternion(this.forward, LOCAL_FORWARD, this.transform.orientattion);
     const eye = this.transform.position;
     this.center[0] = eye[0] + this.forward[0];
     this.center[1] = eye[1] + this.forward[1];
@@ -1302,9 +1734,9 @@ var Camera = class {
       const pitchDelta = -mouseDelta[1] * this.rotateSpeed;
       setQuaternion(this.rotationTarget, this.transform.orientattion);
       if (yawDelta !== 0) {
-        rotateQuaternionAroundAxis(this.rotationTarget, this.rotationTarget, this.worldUp, yawDelta);
+        rotateQuaternionAroundAxis(this.rotationTarget, this.rotationTarget, WORLD_UP, yawDelta);
       }
-      rotateVec3ByQuaternion(this.right, allocVec3(1, 0, 0), this.rotationTarget);
+      rotateVec3ByQuaternion(this.right, LOCAL_RIGHT, this.rotationTarget);
       const nextPitch = Math.max(-this.maxPitch, Math.min(this.maxPitch, this.currentPitch + pitchDelta));
       const appliedPitchDelta = nextPitch - this.currentPitch;
       if (appliedPitchDelta !== 0) {
@@ -1318,8 +1750,8 @@ var Camera = class {
       const rotationBlend = Math.min(1, 10 * deltaTime);
       slerp(this.transform.orientattion, this.transform.orientattion, this.rotationTarget, rotationBlend);
     }
-    rotateVec3ByQuaternion(this.forward, allocVec3(0, 0, -1), this.transform.orientattion);
-    rotateVec3ByQuaternion(this.right, allocVec3(1, 0, 0), this.transform.orientattion);
+    rotateVec3ByQuaternion(this.forward, LOCAL_FORWARD, this.transform.orientattion);
+    rotateVec3ByQuaternion(this.right, LOCAL_RIGHT, this.transform.orientattion);
     if (inputmanager.isKeyPressed(KeyCode.W)) {
       this.transform.position[0] += this.forward[0] * this.moveSpeed * deltaTime;
       this.transform.position[1] += this.forward[1] * this.moveSpeed * deltaTime;
@@ -1353,14 +1785,29 @@ var camera_default = Camera;
 // src/graphics/scene.ts
 var Scene = class {
   entities = [];
-  cam = new camera_default();
+  cam;
+  meshCache = /* @__PURE__ */ new Map();
+  getOrCreateMesh(name, primitive) {
+    const cacheKey = `${name}:${primitive}`;
+    const cached = this.meshCache.get(cacheKey);
+    if (cached) {
+      return cached;
+    }
+    const mesh = new Mesh(Assets.getModel(name), gl, primitive);
+    this.meshCache.set(cacheKey, mesh);
+    return mesh;
+  }
   createEntity(options) {
-    const mesh = new Mesh(Assets.getModel(options.mesh), gl);
+    const primitive = options.primitive ?? gl.TRIANGLES;
+    const mesh = this.getOrCreateMesh(options.mesh, primitive);
     const renderable = new Renderable(mesh, options.material ?? Assets.getDefaultMaterial());
     const entity = new Entity(options);
     entity.renderable = renderable;
     this.entities.push(entity);
     return entity;
+  }
+  constructor(skyboxName) {
+    this.cam = new camera_default(skyboxName);
   }
   add(entity) {
     this.entities.push(entity);
@@ -1372,7 +1819,86 @@ var Renderer = class {
   initialized = false;
   view = allocMat4();
   projection = allocMat4();
-  defaultLightDir = allocVec3(1, 1, 1);
+  defaultLightDir = allocVec3(0.62, 0.93, 0.28);
+  lightDirInput = allocVec3(0.62, 0.93, 0.28);
+  setLightDirection(x, y, z) {
+    if (x === 0 && y === 0 && z === 0) {
+      setVec3(this.defaultLightDir, 0.62, 0.93, 0.28);
+      return;
+    }
+    setVec3(this.lightDirInput, x, y, z);
+    normalize(this.lightDirInput, this.lightDirInput);
+    setVec3(this.defaultLightDir, this.lightDirInput[0], this.lightDirInput[1], this.lightDirInput[2]);
+  }
+  beginFrame() {
+    gl.viewport(0, 0, canvas.width, canvas.height);
+    gl.enable(gl.DEPTH_TEST);
+    gl.depthFunc(gl.LESS);
+    gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
+  }
+  updateCameraState(scene2) {
+    this.view = scene2.cam.getViewMatrix();
+    this.projection = scene2.cam.getProjectionMatrix();
+  }
+  bindEnvironmentCubemap(scene2) {
+    const envCubemap = scene2.cam.skybox?.cubemap;
+    if (envCubemap && envCubemap.ready) {
+      envCubemap.bind(0);
+    }
+  }
+  renderOpaquePass(scene2) {
+    const lightDir = this.defaultLightDir;
+    const cameraPos = scene2.cam.getPosition();
+    this.bindEnvironmentCubemap(scene2);
+    const litShader = Assets.getShader("default");
+    for (const entity of scene2.entities) {
+      if (entity.renderable && entity.renderable.mesh.primitive !== gl.LINES) {
+        entity.renderable.draw(
+          litShader,
+          entity.transform.getModelMatrix(),
+          this.view,
+          this.projection,
+          lightDir,
+          cameraPos,
+          0,
+          false
+        );
+      }
+    }
+  }
+  renderLinePass(scene2) {
+    const lightDir = this.defaultLightDir;
+    const cameraPos = scene2.cam.getPosition();
+    const unlitShader = Assets.getShader("unlit");
+    gl.depthFunc(gl.LEQUAL);
+    gl.enable(gl.BLEND);
+    gl.blendFunc(gl.SRC_ALPHA, gl.ONE_MINUS_SRC_ALPHA);
+    gl.depthMask(false);
+    for (const entity of scene2.entities) {
+      if (entity.renderable && entity.renderable.mesh.primitive === gl.LINES) {
+        entity.renderable.draw(
+          unlitShader,
+          entity.transform.getModelMatrix(),
+          this.view,
+          this.projection,
+          lightDir,
+          cameraPos,
+          0,
+          true
+        );
+      }
+    }
+    gl.depthMask(true);
+    gl.disable(gl.BLEND);
+    gl.depthFunc(gl.LESS);
+  }
+  renderSkyboxPass(scene2) {
+    gl.depthFunc(gl.LEQUAL);
+    gl.depthMask(false);
+    scene2.cam.skybox?.draw(this.view, this.projection, scene2.cam.getPosition());
+    gl.depthMask(true);
+    gl.depthFunc(gl.LESS);
+  }
   init() {
     if (this.initialized) return;
     gl.enable(gl.DEPTH_TEST);
@@ -1381,31 +1907,11 @@ var Renderer = class {
   }
   render(scene2) {
     this.init();
-    gl.viewport(0, 0, canvas.width, canvas.height);
-    gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
-    this.view = scene2.cam.getViewMatrix();
-    this.projection = scene2.cam.getProjectionMatrix();
-    gl.depthFunc(gl.LEQUAL);
-    gl.depthMask(false);
-    scene2.cam.skybox.draw(this.view, this.projection, scene2.cam.getPosition());
-    gl.depthMask(true);
-    gl.depthFunc(gl.LESS);
-    const lightDir = this.defaultLightDir;
-    const cameraPos = scene2.cam.getPosition();
-    for (const entity of scene2.entities) {
-      if (entity.renderable) {
-        const shader = entity.renderable.mat.shader;
-        shader.use();
-        shader.setMat4("u_model", entity.transform.getModelMatrix());
-        shader.setVec3("u_light_dir", lightDir);
-        scene2.cam.skybox.cubemap.bind(1);
-        shader.setInt("u_skybox", 1);
-        shader.setVec3("u_camera_pos", cameraPos);
-        shader.setMat4("u_view", this.view);
-        shader.setMat4("u_projection", this.projection);
-        entity.renderable.draw();
-      }
-    }
+    this.beginFrame();
+    this.updateCameraState(scene2);
+    this.renderOpaquePass(scene2);
+    this.renderLinePass(scene2);
+    this.renderSkyboxPass(scene2);
   }
 };
 
@@ -1572,9 +2078,11 @@ var Engine = class _Engine {
   renderer = new Renderer();
   clock = new FixedStepClock(1 / 120);
   input = new InputManager();
+  fpsFrameCount = 0;
+  fpsLastSampleTime = performance.now();
   currScene;
-  createScene() {
-    return new Scene();
+  createScene(skyboxName) {
+    return new Scene(skyboxName);
   }
   setScene(scene2) {
     this.currScene = scene2;
@@ -1600,32 +2108,104 @@ var Engine = class _Engine {
     const frameDT = Math.min(this.clock.frameDT, 0.05);
     this.currScene.cam.handleInput(this.input, frameDT);
     this.renderer.render(this.currScene);
+    this.fpsFrameCount++;
+    const now = performance.now();
+    const elapsedMs = now - this.fpsLastSampleTime;
+    if (elapsedMs >= 1e3) {
+      const fps = this.fpsFrameCount * 1e3 / elapsedMs;
+      console.log(`FPS: ${fps.toFixed(1)}`);
+      this.fpsFrameCount = 0;
+      this.fpsLastSampleTime = now;
+    }
     requestAnimationFrame(() => this.gameloop());
   }
 };
 var engine_default = Engine;
 
+// src/graphics/gridFactory.ts
+var GRID_MODEL_NAME = "grid_runtime";
+var GRID_AXIS_MODEL_NAME = "grid_axis_runtime";
+function createGrid2(scene2, where, size, includeAxes) {
+  const safeSize = Math.max(1, size);
+  const cells = Math.max(2, Math.floor(safeSize * 2));
+  const grid = createGridPrimitive(safeSize, safeSize, cells, includeAxes);
+  Assets.registerModel(GRID_MODEL_NAME, grid.grid);
+  if (includeAxes && grid.axisCylinder) {
+    Assets.registerModel(GRID_AXIS_MODEL_NAME, grid.axisCylinder);
+  }
+  const gridTransform = new transform_default(where);
+  const gridMat = Assets.getDefaultMaterial();
+  gridMat.color = { r: 1, g: 1, b: 1 };
+  gridMat.alpha = 0.1;
+  gridMat.roughness = 1;
+  gridMat.metallic = 0;
+  gridMat.ao = 1;
+  scene2.createEntity({
+    mesh: GRID_MODEL_NAME,
+    transform: gridTransform,
+    material: gridMat,
+    primitive: gl.LINES
+  });
+  if (!includeAxes || !grid.axisCylinder) {
+    return;
+  }
+  const tipHeight = Math.max(0.25, safeSize * 0.08);
+  const tipRadius = tipHeight * 0.35;
+  for (const axis of grid.axisDefinitions) {
+    const rotation = quaternionFromAxisAngle(
+      allocVec3(axis.rotationAxis[0], axis.rotationAxis[1], axis.rotationAxis[2]),
+      axis.angle
+    );
+    const axisTransform = new transform_default(where);
+    axisTransform.setOrientation(rotation);
+    const axisMat = Assets.getDefaultMaterial();
+    axisMat.color = axis.color;
+    axisMat.roughness = 0.45;
+    axisMat.metallic = 0.1;
+    axisMat.ao = 1;
+    scene2.createEntity({
+      mesh: GRID_AXIS_MODEL_NAME,
+      transform: axisTransform,
+      material: axisMat
+    });
+    const axisDir = allocVec3(0, 0, 0);
+    rotateVec3ByQuaternion(axisDir, allocVec3(0, 1, 0), rotation);
+    const axisEndOffset = grid.axisLength * 0.5 + tipHeight * 0.5;
+    const tipTransform = new transform_default(
+      where[0] + axisDir[0] * axisEndOffset,
+      where[1] + axisDir[1] * axisEndOffset,
+      where[2] + axisDir[2] * axisEndOffset
+    );
+    tipTransform.scale[0] = tipRadius;
+    tipTransform.scale[1] = tipHeight;
+    tipTransform.scale[2] = tipRadius;
+    tipTransform.setOrientation(rotation);
+    const tipMat = Assets.getDefaultMaterial();
+    tipMat.color = axis.color;
+    tipMat.roughness = 0.35;
+    tipMat.metallic = 0.1;
+    tipMat.ao = 1;
+    scene2.createEntity({
+      mesh: "pyramid",
+      transform: tipTransform,
+      material: tipMat
+    });
+  }
+}
+
 // src/index.ts
 var engine = engine_default.getInstance();
 var scene = engine.createScene();
-var bunnytransform = new transform_default();
-bunnytransform.setPosition(allocVec3(0, -0.85, 5));
-bunnytransform.setScale(allocVec3(10, 10, 10));
-bunnytransform.setOrientation(allocQuaternion(0, 0, 0, 0));
-var groundtransform = new transform_default();
-groundtransform.setPosition(allocVec3(0, -1, 2));
-groundtransform.setOrientation(allocQuaternion(0, 0, 0, 0));
-groundtransform.setScale(allocVec3(10, 1, 10));
-scene.createEntity({
-  mesh: "bunny",
-  material: Assets.getDefaultMaterial(),
-  transform: bunnytransform
-});
 scene.createEntity({
   mesh: "cube",
-  material: Assets.getDefaultMaterial(),
-  transform: groundtransform
+  transform: new transform_default(0, 0, -5)
 });
+scene.createEntity({
+  mesh: "cubeWireframe",
+  transform: new transform_default(2, 0, -5),
+  primitive: gl.LINES
+});
+createGrid2(scene, allocVec3(0, -0.6, -5), 10, true);
 engine.setScene(scene);
 requestAnimationFrame(() => engine.gameloop());
 //# sourceMappingURL=index.js.map

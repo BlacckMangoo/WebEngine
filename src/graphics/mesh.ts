@@ -23,14 +23,25 @@ class VertexLayout {
 export interface ModelData {
   vertices: number[]
   normals?: number[]
+  uvs?: number[]
   indices: number[]
 }
 
-// Layout: position (3 floats) + normal (3 floats) = 6 floats * 4 bytes = 24 bytes stride
-let pos3norm3 = new VertexLayout(24, [
+// Layout: position (3) + normal (3) + uv (2) = 8 floats * 4 bytes = 32 bytes stride
+let pos3norm3uv2 = new VertexLayout(32, [
   { location: 0, size: 3, type: gl.FLOAT, normalized: false, offset: 0 },
   { location: 1, size: 3, type: gl.FLOAT, normalized: false, offset: 12 },
+  { location: 2, size: 2, type: gl.FLOAT, normalized: false, offset: 24 },
 ])
+
+function createFallbackUVs(vertices: number[], vertexCount: number): number[] {
+  const uvs = new Array<number>(vertexCount * 2)
+  for (let i = 0; i < vertexCount; i++) {
+    uvs[i * 2] = vertices[i * 3] * 0.5 + 0.5
+    uvs[i * 2 + 1] = vertices[i * 3 + 2] * 0.5 + 0.5
+  }
+  return uvs
+}
 
 export class Mesh {
   vertexData: Float32Array = new Float32Array()
@@ -47,26 +58,33 @@ export class Mesh {
     primitive: MeshPrimitive = gl.TRIANGLES
   ) {
     this.indices = new Uint32Array(data.indices)
-    this.layout = pos3norm3
+    this.layout = pos3norm3uv2
     this.vertexCount = data.vertices.length / 3
     const normals = data.normals ?? new Array(this.vertexCount * 3).fill(0)
+    const uvs = data.uvs ?? createFallbackUVs(data.vertices, this.vertexCount)
 
     if (normals.length !== this.vertexCount * 3) {
       throw new Error('Invalid normals length for mesh')
     }
+    if (uvs.length !== this.vertexCount * 2) {
+      throw new Error('Invalid uvs length for mesh')
+    }
 
     this.primitive = primitive
-    //[px, py, pz, nx, ny, nz, ...] ->data layout
-    this.vertexData = new Float32Array(this.vertexCount * 6)
+    //[px, py, pz, nx, ny, nz, u, v, ...] ->data layout
+    this.vertexData = new Float32Array(this.vertexCount * 8)
     for (let i = 0; i < this.vertexCount; i++) {
       // Position
-      this.vertexData[i * 6] = data.vertices[i * 3]
-      this.vertexData[i * 6 + 1] = data.vertices[i * 3 + 1]
-      this.vertexData[i * 6 + 2] = data.vertices[i * 3 + 2]
+      this.vertexData[i * 8] = data.vertices[i * 3]
+      this.vertexData[i * 8 + 1] = data.vertices[i * 3 + 1]
+      this.vertexData[i * 8 + 2] = data.vertices[i * 3 + 2]
       // Normal
-      this.vertexData[i * 6 + 3] = normals[i * 3]
-      this.vertexData[i * 6 + 4] = normals[i * 3 + 1]
-      this.vertexData[i * 6 + 5] = normals[i * 3 + 2]
+      this.vertexData[i * 8 + 3] = normals[i * 3]
+      this.vertexData[i * 8 + 4] = normals[i * 3 + 1]
+      this.vertexData[i * 8 + 5] = normals[i * 3 + 2]
+      // UV
+      this.vertexData[i * 8 + 6] = uvs[i * 2]
+      this.vertexData[i * 8 + 7] = uvs[i * 2 + 1]
     }
 
     // Create buffers

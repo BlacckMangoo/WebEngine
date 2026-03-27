@@ -6,10 +6,15 @@ import { allocQuaternion, rotateQuaternionAroundAxis, rotateVec3ByQuaternion, se
 import { InputManager } from "../inputSystem/inputManager";
 import { KeyCode } from "../inputSystem/keycodes";
 import Skybox from "./skybox";
+import { CubeMapName } from "./cubemapData";
+
+const WORLD_UP = allocVec3(0, 1, 0);
+const LOCAL_FORWARD = allocVec3(0, 0, -1);
+const LOCAL_RIGHT = allocVec3(1, 0, 0);
 
 class Camera {
-    transform : Transform = new Transform();
-    skybox: Skybox = new Skybox("skybox");
+    transform : Transform = new Transform(0, 0, 0);
+    skybox? : Skybox;
     fov : number = 45;
     aspect : number = canvas .width / canvas.height;
     near : number = 0.1;
@@ -22,20 +27,18 @@ class Camera {
     private readonly up  = allocVec3(0, 0, 0);
     private readonly forward = allocVec3(0, 0, -1);
     private readonly right = allocVec3(1, 0, 0);
-    private readonly worldUp = allocVec3(0, 1, 0);
     private readonly rotationTarget = allocQuaternion();
 
      center = allocVec3(0, 0, 0)
 
-    constructor()
+    constructor(skyboxName?: CubeMapName)
     {
-        this.transform.position[0] = 0;
-        this.transform.position[1] = 0;
-        this.transform.position[2] = 0;
-        this.transform.orientattion = allocQuaternion(0, 0, 0, 1);
+        if (skyboxName) {
+            this.skybox = new Skybox(skyboxName);
+        }
         // Default camera looks towards -Z, so we set the orientation to identity quaternion
 
-        this.moveSpeed = 2;
+        this.moveSpeed = 6;
         this.rotateSpeed = 0.008;
         this.maxPitch = Math.PI / 2 - 0.001;
         this.currentPitch = 0;
@@ -46,7 +49,6 @@ class Camera {
         return this.transform.position
     }
 
-
     view = allocMat4()
     projection = allocMat4()
 
@@ -55,8 +57,8 @@ class Camera {
         return this.projection
     }
         getViewMatrix(): Mat4 {
-        rotateVec3ByQuaternion(this.up, allocVec3(0, 1, 0), this.transform.orientattion)
-        rotateVec3ByQuaternion(this.forward, allocVec3(0, 0, -1), this.transform.orientattion)
+        rotateVec3ByQuaternion(this.up, WORLD_UP, this.transform.orientattion)
+        rotateVec3ByQuaternion(this.forward, LOCAL_FORWARD, this.transform.orientattion)
         const eye = this.transform.position
         this.center[0] = eye[0] + this.forward[0]
         this.center[1] = eye[1] + this.forward[1]
@@ -78,10 +80,10 @@ class Camera {
             setQuaternion(this.rotationTarget, this.transform.orientattion)
 
             if (yawDelta !== 0) {
-                rotateQuaternionAroundAxis(this.rotationTarget, this.rotationTarget, this.worldUp, yawDelta)
+                rotateQuaternionAroundAxis(this.rotationTarget, this.rotationTarget, WORLD_UP, yawDelta)
             }
 
-            rotateVec3ByQuaternion(this.right, allocVec3(1, 0, 0), this.rotationTarget)
+            rotateVec3ByQuaternion(this.right, LOCAL_RIGHT, this.rotationTarget)
             const nextPitch = Math.max(-this.maxPitch, Math.min(this.maxPitch, this.currentPitch + pitchDelta))
             const appliedPitchDelta = nextPitch - this.currentPitch
 
@@ -99,8 +101,8 @@ class Camera {
             slerp(this.transform.orientattion, this.transform.orientattion, this.rotationTarget, rotationBlend)
         }
 
-        rotateVec3ByQuaternion(this.forward, allocVec3(0, 0, -1), this.transform.orientattion)
-        rotateVec3ByQuaternion(this.right, allocVec3(1, 0, 0), this.transform.orientattion)
+        rotateVec3ByQuaternion(this.forward, LOCAL_FORWARD, this.transform.orientattion)
+        rotateVec3ByQuaternion(this.right, LOCAL_RIGHT, this.transform.orientattion)
 
         if(inputmanager.isKeyPressed(KeyCode.W))
         {
@@ -134,7 +136,6 @@ class Camera {
         {
             this.transform.position[1] += this.moveSpeed * deltaTime;
         }
-
 
     }
 

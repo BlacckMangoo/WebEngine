@@ -3,21 +3,24 @@ import { ModelData } from '@/src/graphics/mesh'
 import horse from '@public/assets/models/horse.json'
 import bunny from '@public/assets/models/stanfordbunny.json'
 import { SHADERS } from '@/src/graphics/shaderSrc'
+
 import {
   CUBE,
+  CUBE_WIREFRAME,
+  CYLINDER,
+  GRID,
+  GRID_CONFIG,
   QUAD,
   TRIANGLE,
   PYRAMID,
-  createSphere,
 } from '@/src/graphics/primitives'
-import { Material } from './graphics/renderable'
+import { Material } from '../graphics/renderable'
 
 class AssetManager {
   private static instance: AssetManager
 
   private shaders: Map<string, Shader> = new Map()
   private models: Map<string, ModelData> = new Map()
-
   private constructor() {}
 
   static getInstance(): AssetManager {
@@ -61,8 +64,10 @@ class AssetManager {
 
   getDefaultMaterial(): Material {
     return {
-      shader: this.getShader('default'),
-      color: { r: 0.8, g: 0.7, b: 0.2 },
+      color: { r: 0.9, g: 0.42, b: 0.22 },
+      roughness: 0.33,
+      metallic: 0.18,
+      ao: 1.0,
     }
   }
 }
@@ -76,10 +81,17 @@ Assets.registerModel('bunny', bunny as ModelData)
 
 // Register primitive models
 Assets.registerModel('cube', CUBE)
+Assets.registerModel('cubeWireframe', CUBE_WIREFRAME)
+Assets.registerModel('cylinder', CYLINDER)
+Assets.registerModel('grid', GRID)
+if (GRID_CONFIG.includeAxes && GRID_CONFIG.axisCylinder) {
+  Assets.registerModel('gridAxisCylinder', GRID_CONFIG.axisCylinder)
+}
 Assets.registerModel('plane', QUAD)
 Assets.registerModel('triangle', TRIANGLE)
 Assets.registerModel('pyramid', PYRAMID)
-Assets.registerModel('sphere', createSphere(0.5, 3))
 
 // Register shaders
 Assets.registerShader('default', new Shader(SHADERS.vertex, SHADERS.fragment))
+Assets.registerShader('unlit', new Shader(SHADERS.unlitVertex, SHADERS.unlitFragment))
+Assets.registerShader('skybox', new Shader(SHADERS.skyboxVertex, SHADERS.skyboxFragment))

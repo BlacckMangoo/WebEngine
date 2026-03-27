@@ -1,37 +1,25 @@
-import { allocQuaternion } from '@/math/quaternion'
-import { allocVec3 } from '@/math/vec3'
-import { Assets } from '@/src/assetManager'
+
 import Engine from '@/src/core/engine'
 import Transform from './graphics/transform'
+import { gl } from './graphics/context'
+import { createGrid } from './graphics/gridFactory'
+import { allocVec3 } from '@/math/vec3'
 
 const engine = Engine.getInstance()
 const scene = engine.createScene()
 
-const bunnytransform = new Transform()
-bunnytransform.setPosition(allocVec3(0, -0.85, 5))
-bunnytransform.setScale(allocVec3(10, 10, 10))
-bunnytransform.setOrientation(allocQuaternion(0, 0, 0, 0))
-
-const groundtransform = new Transform()
-groundtransform.setPosition(allocVec3(0, -1, 2))
-groundtransform.setOrientation(allocQuaternion(0, 0, 0, 0))
-groundtransform.setScale(allocVec3(10, 1, 10))
-
-
-scene.createEntity({
-  mesh: 'bunny',
-  material: Assets.getDefaultMaterial(),
-  transform : bunnytransform
-})
-
 scene.createEntity({
   mesh: 'cube',
-  material: Assets.getDefaultMaterial(),
-  transform : groundtransform
+  transform: new Transform(0, 0, -5),
 })
 
+scene.createEntity({
+  mesh: 'cubeWireframe',
+  transform: new Transform(2, 0, -5),
+  primitive: gl.LINES,
+})
 
-
+createGrid(scene, allocVec3(0, -0.6, -5), 10, true)
 
 
 engine.setScene(scene)

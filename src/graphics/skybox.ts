@@ -1,13 +1,13 @@
-import { Assets } from "../assetManager";
+import { Assets } from "../core/assetManager";
 import { gl } from "./context";
 import { Mesh, ModelData } from "./mesh";
 import { Mat4 } from "@/math/mat4";
 import { Shader } from "./shader";
-import { SHADERS } from "./shaderSrc";
 import { createCubemap, Cubemap } from "./cubemap";
 import { allocVec3, Vec3 } from "@/math/vec3";
 import { GetTransformMatrix } from "@/math/utils";
 import { CubeMapName } from "./cubemapData";
+
 
 class Skybox {
 
@@ -20,7 +20,7 @@ class Skybox {
         // cube mesh 
         const model = Assets.getModel('cube') as  ModelData;
         this.mesh = new Mesh(model, gl) ;
-        this.shader = new Shader(SHADERS.skyboxVertex, SHADERS.skyboxFragment);
+        this.shader = Assets.getShader('skybox') ;
         this.cubemap = createCubemap(cubemapName as CubeMapName);
         this.model = GetTransformMatrix(allocVec3(0, 0, 0))
     }
